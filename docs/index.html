@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_oracle - Claude's External Memory and Development Intelligence Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.png" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_oracle</h1>
+        <p class="tagline">Claude's External Memory and Development Intelligence Platform</p>
+        <div class="badges">
+            <span class="badge badge-version">v1.0.0</span>
+            <span class="badge badge-license">MIT</span>
+            <span class="badge badge-rfc">SCOOP</span>
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#commands">Commands</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_oracle">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>
+                <strong>simple_oracle</strong> is a persistent memory and development intelligence platform
+                for AI-assisted software development. It solves the fundamental problem of AI context limits
+                by providing Claude (or any AI assistant) with a durable external memory that survives across sessions.
+            </p>
+            <p>
+                <strong>Core insight:</strong> When Claude's context window compresses, the oracle remembers everything.
+                Run <code>oracle-cli boot</code> at session start and you're back to full context instantly.
+            </p>
+            <p>
+                Part of the <strong>simple_*</strong> ecosystem of focused, single-purpose Eiffel libraries.
+                Built with Design by Contract principles and SCOOP compatibility.
+            </p>
+        </section>
+
+        <section id="quick-start">
+            <h2>Quick Start</h2>
+
+            <div class="quick-start">
+                <h3>Boot Sequence (Every Session)</h3>
+<pre><code>oracle-cli boot</code></pre>
+                <p>This single command:</p>
+                <ul>
+                    <li>Injects Eiffel expertise (SCOOP, DBC, void safety, patterns)</li>
+                    <li>Shows last session's handoff (what you were working on)</li>
+                    <li>Provides current ecosystem context (libraries, recent activity)</li>
+                    <li>Reports any problems (failing tests, build issues)</li>
+                </ul>
+            </div>
+
+            <h3>Common Commands</h3>
+<pre><code><span class="comment"># Query the knowledge base</span>
+oracle-cli query <span class="string">"what libraries use inline C?"</span>
+oracle-cli query <span class="string">"show failing tests"</span>
+
+<span class="comment"># Compile and test</span>
+oracle-cli compile simple_json
+oracle-cli test simple_json
+
+<span class="comment"># Track git activity</span>
+oracle-cli git simple_json 10
+oracle-cli commits
+
+<span class="comment"># End of session</span>
+oracle-cli handoff <span class="string">"task"</span> <span class="string">"wip"</span> <span class="string">"next"</span> <span class="string">"blockers"</span></code></pre>
+        </section>
+
+        <section id="commands">
+            <h2>Commands Reference</h2>
+
+            <h3>Session Management</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>boot</code></td>
+                    <td>Full boot sequence - expertise + context injection</td>
+                </tr>
+                <tr>
+                    <td><code>handoff</code></td>
+                    <td>Record/view session handoff for context continuity</td>
+                </tr>
+                <tr>
+                    <td><code>check</code></td>
+                    <td>Show guidance (when told "see oracle")</td>
+                </tr>
+            </table>
+
+            <h3>Knowledge Base</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>query &lt;question&gt;</code></td>
+                    <td>Natural language search of knowledge base</td>
+                </tr>
+                <tr>
+                    <td><code>learn &lt;cat&gt; &lt;title&gt; &lt;content&gt;</code></td>
+                    <td>Add knowledge entry (pattern, rule, gotcha, decision)</td>
+                </tr>
+                <tr>
+                    <td><code>ingest [path]</code></td>
+                    <td>Ingest docs from directory into knowledge base</td>
+                </tr>
+            </table>
+
+            <h3>Development Tracking</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>compile &lt;lib&gt;</code></td>
+                    <td>Run ec.exe and log result</td>
+                </tr>
+                <tr>
+                    <td><code>compiles</code></td>
+                    <td>Show recent compile history</td>
+                </tr>
+                <tr>
+                    <td><code>test &lt;lib&gt;</code></td>
+                    <td>Run tests and log result</td>
+                </tr>
+                <tr>
+                    <td><code>tests</code></td>
+                    <td>Show recent test history</td>
+                </tr>
+            </table>
+
+            <h3>Git Integration</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>git &lt;lib&gt; [count]</code></td>
+                    <td>Scan and log commits to oracle</td>
+                </tr>
+                <tr>
+                    <td><code>commits</code></td>
+                    <td>Show recent commits across all libraries</td>
+                </tr>
+            </table>
+
+            <h3>Ecosystem</h3>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>status</code></td>
+                    <td>Ecosystem health check</td>
+                </tr>
+                <tr>
+                    <td><code>stats [period]</code></td>
+                    <td>Metrics for period (today, week, month, all)</td>
+                </tr>
+                <tr>
+                    <td><code>scan</code></td>
+                    <td>Rescan filesystem for libraries</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="features">
+            <h2>Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Persistent Memory</h4>
+                    <p>SQLite database survives sessions. Never lose context again.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Knowledge Base</h4>
+                    <p>FTS5 full-text search. Store patterns, rules, gotchas, decisions.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Session Handoffs</h4>
+                    <p>Record what you're working on. Resume seamlessly next session.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Compile/Test Tracking</h4>
+                    <p>Log all builds and test runs. Track success/failure patterns.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Git Integration</h4>
+                    <p>Scan and store commit history. Track changes across libraries.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Ecosystem Scanner</h4>
+                    <p>Discover libraries, classes, features. Extract DBC contracts.</p>
+                </div>
+            </div>
+
+            <h3>Why simple_oracle?</h3>
+            <p>
+                AI assistants have limited context windows. After extended sessions, context compresses
+                and loses important state. simple_oracle provides the persistent memory needed for
+                effective long-term collaboration.
+            </p>
+            <ul>
+                <li><strong>Instant Context</strong> - <code>boot</code> command restores full awareness</li>
+                <li><strong>Searchable Knowledge</strong> - FTS5 for natural language queries</li>
+                <li><strong>Activity Tracking</strong> - Compiles, tests, git history logged automatically</li>
+                <li><strong>Session Handoffs</strong> - Explicit continuity between sessions</li>
+            </ul>
+        </section>
+
+        <section id="api">
+            <h2>API Overview</h2>
+
+            <div class="api-section">
+                <h3>SIMPLE_ORACLE</h3>
+                <div class="signature">make</div>
+                <p>Initialize oracle with default database location.</p>
+
+                <div class="signature">full_boot: STRING_32</div>
+                <p>Complete boot sequence with expertise injection + context brief.</p>
+
+                <div class="signature">query (a_question: STRING_32): STRING_32</div>
+                <p>Natural language search of knowledge base using FTS5.</p>
+                <div class="contracts">
+                    <h4>Contracts</h4>
+                    <div class="require">require: not a_question.is_empty</div>
+                    <div class="ensure">ensure: Result /= Void</div>
+                </div>
+
+                <div class="signature">log_compile (a_library, a_target: STRING_32; a_success: BOOLEAN; a_duration: REAL_64)</div>
+                <p>Record compilation result to history.</p>
+
+                <div class="signature">record_handoff (a_task, a_wip, a_next, a_blockers: detachable STRING_32)</div>
+                <p>Record session handoff for context continuity.</p>
+            </div>
+        </section>
+
+        <section id="integration">
+            <h2>Claude Code Integration</h2>
+
+            <h3>Auto-boot Hook</h3>
+            <p>Add to <code>.claude/hooks/session-start.ps1</code>:</p>
+<pre><code><span class="keyword">$ORACLE_CLI</span> = <span class="string">"D:\prod\simple_oracle\oracle-cli.exe"</span>
+<span class="keyword">if</span> (Test-Path <span class="keyword">$ORACLE_CLI</span>) {
+    <span class="keyword">$BOOT_OUTPUT</span> = & <span class="keyword">$ORACLE_CLI</span> boot 2>&1
+    Write-Output <span class="string">"=== ORACLE AUTO-BOOT ==="</span>
+    Write-Output <span class="keyword">$BOOT_OUTPUT</span>
+    Write-Output <span class="string">"=== END ORACLE BOOT ==="</span>
+}
+<span class="keyword">exit</span> 0</code></pre>
+
+            <h3>CLAUDE.md Integration</h3>
+            <p>Add to your project's <code>CLAUDE.md</code> file:</p>
+<pre><code><span class="comment">## ORACLE BOOT SEQUENCE</span>
+
+<span class="comment">**On every new session, run:**</span>
+oracle-cli boot
+
+<span class="comment">**When Larry says "consult oracle", run:**</span>
+oracle-cli check</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p><a href="https://github.com/simple-eiffel/simple_oracle">GitHub</a> | <a href="https://github.com/simple-eiffel">simple_* ecosystem</a></p>
+        <p class="copyright">&copy; 2025 simple_* ecosystem. MIT License.</p>
+    </footer>
+</body>
+</html>
