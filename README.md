@@ -30,6 +30,19 @@ The system tracks:
 
 ---
 
+## Documentation
+
+Full HTML documentation is available at **[docs/index.html](docs/index.html)**.
+
+The documentation includes:
+- Quick start guide
+- Complete commands reference
+- Feature overview with examples
+- API documentation
+- Claude Code integration guide
+
+---
+
 ## Quick Start
 
 ### Boot Sequence (Every Session)
