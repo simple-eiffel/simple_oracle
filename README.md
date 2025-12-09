@@ -3,6 +3,9 @@
 </p>
 
 # SIMPLE_ORACLE
+
+**[Documentation](https://simple-eiffel.github.io/simple_oracle/)** | **[GitHub](https://github.com/simple-eiffel/simple_oracle)**
+
 ### Claude's External Memory and Development Intelligence Platform
 
 [![Language](https://img.shields.io/badge/language-Eiffel-blue.svg)](https://www.eiffel.org/)
