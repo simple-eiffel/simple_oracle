@@ -24,6 +24,8 @@
 		<library name="simple_process" location="$SIMPLE_PROCESS\simple_process.ecf"/>
 		<library name="simple_sql" location="$SIMPLE_SQL\simple_sql.ecf"/>
 		<library name="simple_watcher" location="$SIMPLE_WATCHER\simple_watcher.ecf"/>
+		<library name="simple_toml" location="$SIMPLE_TOML\simple_toml.ecf"/>
+		<library name="simple_ucf" location="$SIMPLE_UCF\simple_ucf.ecf"/>
 		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>

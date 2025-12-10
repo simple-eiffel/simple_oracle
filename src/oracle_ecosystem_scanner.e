@@ -121,6 +121,48 @@ feature -- Scanning
 			set: incremental_mode = a_enabled
 		end
 
+	scan_from_ucf (a_ucf: SIMPLE_UCF)
+			-- Scan libraries defined in UCF configuration.
+			-- More precise than directory scan - only scans libraries explicitly defined.
+		require
+			ucf_valid: a_ucf.is_valid
+		local
+			l_start, l_end: SIMPLE_DATE_TIME
+		do
+			create l_start.make_now
+			libraries_found.wipe_out
+			classes_found.wipe_out
+			features_found.wipe_out
+			parents_found.wipe_out
+			clients_found.wipe_out
+
+			across a_ucf.libraries as lib loop
+				if not lib.resolved_path.is_empty then
+					scan_library (lib.resolved_path.to_string_8, lib.name.to_string_32)
+				end
+			end
+
+			-- Store results
+			store_scan_results
+
+			-- Calculate elapsed time
+			create l_end.make_now
+			last_scan_time := (l_end.to_timestamp - l_start.to_timestamp).to_integer_32
+		end
+
+	scan_from_environment
+			-- Scan libraries discovered from SIMPLE_* environment variables.
+			-- Uses UCF auto-discovery for consistency.
+		local
+			l_ucf: SIMPLE_UCF
+		do
+			create l_ucf.make
+			l_ucf.discover_from_environment
+			if l_ucf.is_valid then
+				scan_from_ucf (l_ucf)
+			end
+		end
+
 	scan_library (a_path: READABLE_STRING_GENERAL; a_name: STRING_32)
 			-- Scan a single library directory.
 		local
