@@ -144,6 +144,31 @@
       }
     }
 
+    // Build hierarchical data for D3
+    const root = {
+      name: "Universe",
+      score: data.overall_score,
+      color: getColor(data.overall_score),
+      children: data.libraries.map(lib => ({
+        name: lib.name.replace('simple_', ''),
+        fullName: lib.name,
+        score: lib.score,
+        color: lib.color,
+        features: lib.feature_count,
+        requires: lib.require_count,
+        ensures: lib.ensure_count,
+        children: lib.classes.slice(0, 20).map(cls => ({  // Limit classes shown
+          name: cls.name,
+          score: cls.score,
+          color: cls.color,
+          features: cls.features,
+          requires: cls.requires,
+          ensures: cls.ensures,
+          hasInvariant: cls.has_invariant
+        }))
+      }))
+    };
+
     function getColor(score) {
       if (score === 0) return '#1a1a1a';
       if (score < 25) return '#2d1f3d';
@@ -153,154 +178,98 @@
       return '#ff4500';
     }
 
-    const width = Math.max(document.getElementById('visualization').clientWidth, 1200);
-    const height = 800;
+    const width = document.getElementById('visualization').clientWidth || 1200;
+    const height = 600;
 
     const svg = d3.select('#visualization')
       .append('svg')
       .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', [0, 0, width, height]);
+      .attr('height', height);
+
+    // Create force simulation
+    const simulation = d3.forceSimulation()
+      .force('link', d3.forceLink().id(d => d.name).distance(80))
+      .force('charge', d3.forceManyBody().strength(-200))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(30));
 
     // Flatten hierarchy to nodes and links
     const nodes = [];
     const links = [];
 
-    // Center node - Universe
-    nodes.push({
-      id: 'universe',
-      name: 'Universe',
-      score: data.overall_score,
-      color: getColor(data.overall_score),
-      radius: 50,
-      x: width / 2,
-      y: height / 2
-    });
+    nodes.push({ id: root.name, ...root, radius: 40 });
 
-    // Library nodes - arranged in a circle initially
-    const libCount = data.libraries.length;
-    data.libraries.forEach((lib, i) => {
-      const angle = (2 * Math.PI * i) / libCount;
-      const dist = 200;
-      nodes.push({
-        id: 'lib_' + lib.name,
-        name: lib.name.replace('simple_', ''),
-        fullName: lib.name,
-        score: lib.score,
-        color: lib.color,
-        features: lib.feature_count,
-        requires: lib.require_count,
-        ensures: lib.ensure_count,
-        radius: 20 + Math.min(lib.class_count, 10),
-        x: width/2 + Math.cos(angle) * dist,
-        y: height/2 + Math.sin(angle) * dist
-      });
-      links.push({ source: 'universe', target: 'lib_' + lib.name });
+    root.children.forEach(lib => {
+      nodes.push({ id: lib.name, ...lib, radius: 25 });
+      links.push({ source: root.name, target: lib.name });
 
-      // Class nodes - only show top 5 per library to avoid clutter
-      lib.classes.slice(0, 5).forEach((cls, j) => {
-        const clsAngle = angle + (j - 2) * 0.15;
-        const clsDist = 350;
-        nodes.push({
-          id: 'lib_' + lib.name + '_' + cls.name,
-          name: cls.name,
-          score: cls.score,
-          color: cls.color,
-          features: cls.features,
-          radius: 8,
-          x: width/2 + Math.cos(clsAngle) * clsDist,
-          y: height/2 + Math.sin(clsAngle) * clsDist
+      if (lib.children) {
+        lib.children.forEach(cls => {
+          const nodeId = lib.name + '.' + cls.name;
+          nodes.push({ id: nodeId, ...cls, radius: 12 });
+          links.push({ source: lib.name, target: nodeId });
         });
-        links.push({ source: 'lib_' + lib.name, target: 'lib_' + lib.name + '_' + cls.name });
-      });
+      }
     });
 
-    // Create force simulation with stronger forces
-    const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id(d => d.id).distance(d => {
-        // Shorter links for class nodes
-        return d.target.id && d.target.id.includes('_') ? 60 : 120;
-      }).strength(0.5))
-      .force('charge', d3.forceManyBody().strength(d => d.radius > 30 ? -800 : -300))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => d.radius + 15))
-      .force('x', d3.forceX(width / 2).strength(0.05))
-      .force('y', d3.forceY(height / 2).strength(0.05));
-
-    // Draw links
     const link = svg.append('g')
-      .attr('stroke', '#30363d')
-      .attr('stroke-opacity', 0.4)
       .selectAll('line')
       .data(links)
       .join('line')
-      .attr('stroke-width', d => d.source.id === 'universe' ? 2 : 1);
+      .attr('class', 'link');
 
-    // Draw nodes
     const node = svg.append('g')
       .selectAll('g')
       .data(nodes)
       .join('g')
       .attr('class', 'node')
-      .style('cursor', 'grab')
       .call(d3.drag()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended));
 
-    // Node circles
     node.append('circle')
       .attr('r', d => d.radius)
       .attr('fill', d => d.color)
-      .attr('stroke', d => d.score >= 50 ? '#ff6b35' : '#444')
-      .attr('stroke-width', d => d.score >= 75 ? 3 : 1);
+      .attr('stroke', d => d.score > 50 ? '#ff4500' : '#30363d')
+      .attr('stroke-width', d => d.score > 75 ? 3 : 1);
 
-    // Node labels (only for library+ size nodes)
-    node.filter(d => d.radius >= 15)
-      .append('text')
-      .attr('dy', d => d.radius + 14)
+    node.append('text')
+      .attr('dy', d => d.radius + 12)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#c9d1d9')
-      .attr('font-size', d => d.radius > 30 ? '14px' : '11px')
-      .attr('font-weight', d => d.radius > 30 ? 'bold' : 'normal')
-      .text(d => d.name.length > 12 ? d.name.substring(0, 10) + '..' : d.name);
+      .text(d => d.name.length > 15 ? d.name.substring(0, 12) + '...' : d.name);
 
-    // Tooltips
     node.append('title')
-      .text(d => d.name + '\nScore: ' + d.score + '%' +
-        (d.features ? '\nFeatures: ' + d.features : '') +
-        (d.requires ? '\nRequires: ' + d.requires : '') +
-        (d.ensures ? '\nEnsures: ' + d.ensures : ''));
+      .text(d => `${d.name}\nScore: ${d.score}%\nFeatures: ${d.features || 'N/A'}`);
 
-    // Tick function
-    simulation.on('tick', () => {
+    simulation.nodes(nodes).on('tick', ticked);
+    simulation.force('link').links(links);
+
+    function ticked() {
       link
         .attr('x1', d => d.source.x)
         .attr('y1', d => d.source.y)
         .attr('x2', d => d.target.x)
         .attr('y2', d => d.target.y);
 
-      node.attr('transform', d => 'translate(' + d.x + ',' + d.y + ')');
-    });
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
+    }
 
-    function dragstarted(event, d) {
+    function dragstarted(event) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
+      event.subject.fx = event.subject.x;
+      event.subject.fy = event.subject.y;
     }
 
-    function dragged(event, d) {
-      d.fx = event.x;
-      d.fy = event.y;
+    function dragged(event) {
+      event.subject.fx = event.x;
+      event.subject.fy = event.y;
     }
 
-    function dragended(event, d) {
+    function dragended(event) {
       if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
-    }
-
-    // Reheat simulation for better initial layout
-    simulation.alpha(1).restart();  </script>
+      event.subject.fx = null;
+      event.subject.fy = null;
+    }  </script>
 </body>
 </html>

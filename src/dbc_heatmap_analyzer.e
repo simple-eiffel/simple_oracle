@@ -1,9 +1,9 @@
 note
 	description: "[
-		DBC_HEATMAP_ANALYZER - Analyzes Design by Contract coverage across the ecosystem.
+		DBC_HEATMAP_ANALYZER - Generates heatmap reports from DbC analysis.
 
-		Generates heatmap data showing where contracts (require/ensure/invariant) exist.
-		Heat = good (well-contracted code), Cold/dark = needs attention.
+		Wraps DBC_ANALYZER from simple_eiffel_parser and adds report generation
+		(JSON, HTML) for visualization.
 
 		Color scale (dark mode):
 		  0%:     #1a1a1a (near-black, cold)
@@ -34,12 +34,10 @@ feature {NONE} -- Initialization
 	make
 			-- Initialize analyzer
 		do
-			create parser.make
+			create analyzer.make
 			create library_metrics.make (50)
-			create class_metrics.make (500)
-			create feature_metrics.make (5000)
 		ensure
-			parser_created: parser /= Void
+			analyzer_created: analyzer /= Void
 		end
 
 feature -- Access
@@ -49,24 +47,39 @@ feature -- Access
 
 	class_metrics: HASH_TABLE [DBC_CLASS_METRICS, STRING]
 			-- Metrics by fully qualified class name (library.class)
-
-	feature_metrics: ARRAYED_LIST [DBC_FEATURE_METRICS]
-			-- All feature metrics
+		do
+			Result := analyzer.class_results
+		end
 
 	total_features: INTEGER
 			-- Total features analyzed
+		do
+			Result := analyzer.total_features
+		end
 
 	total_with_require: INTEGER
 			-- Features with preconditions
+		do
+			Result := analyzer.total_with_require
+		end
 
 	total_with_ensure: INTEGER
 			-- Features with postconditions
+		do
+			Result := analyzer.total_with_ensure
+		end
 
 	total_classes: INTEGER
 			-- Total classes analyzed
+		do
+			Result := analyzer.total_classes
+		end
 
 	total_with_invariant: INTEGER
 			-- Classes with invariants
+		do
+			Result := analyzer.total_with_invariant
+		end
 
 feature -- Analysis
 
@@ -202,20 +215,14 @@ feature -- Scoring
 
 feature {NONE} -- Implementation
 
-	parser: EIFFEL_PARSER
-			-- Eiffel source parser
+	analyzer: DBC_ANALYZER
+			-- Eiffel DbC analyzer from simple_eiffel_parser
 
 	reset_metrics
 			-- Reset all metrics
 		do
 			library_metrics.wipe_out
-			class_metrics.wipe_out
-			feature_metrics.wipe_out
-			total_features := 0
-			total_with_require := 0
-			total_with_ensure := 0
-			total_classes := 0
-			total_with_invariant := 0
+			analyzer.reset
 		end
 
 	scan_directory (a_dir: DIRECTORY; a_lib_name: STRING; a_lib_metrics: DBC_LIBRARY_METRICS)
@@ -247,14 +254,12 @@ feature {NONE} -- Implementation
 		end
 
 	analyze_file (a_path, a_lib_name: STRING; a_lib_metrics: DBC_LIBRARY_METRICS)
-			-- Analyze a single Eiffel file
+			-- Analyze a single Eiffel file using shared DBC_ANALYZER
 		local
 			l_file: SIMPLE_FILE
 			l_content: STRING
-			l_ast: detachable EIFFEL_AST
-			l_class_metrics: DBC_CLASS_METRICS
-			l_feature_metrics: DBC_FEATURE_METRICS
-			l_has_invariant: BOOLEAN
+			l_class_name: STRING
+			l_old_features, l_old_requires, l_old_ensures, l_old_classes: INTEGER
 			l_retried: BOOLEAN
 		do
 			if not l_retried then
@@ -264,50 +269,43 @@ feature {NONE} -- Implementation
 
 					-- Skip empty files
 					if l_content.count > 10 then
-						-- Check for invariant in raw text (parser may not expose it)
-						l_has_invariant := l_content.has_substring ("%Ninvariant%N") or
-							l_content.has_substring ("%Ninvariant%T")
+						-- Extract class name from filename
+						l_class_name := a_path.twin
+						if l_class_name.has ('/') then
+							l_class_name := l_class_name.substring (l_class_name.last_index_of ('/', l_class_name.count) + 1, l_class_name.count)
+						end
+						if l_class_name.has ('\') then
+							l_class_name := l_class_name.substring (l_class_name.last_index_of ('\', l_class_name.count) + 1, l_class_name.count)
+						end
+						if l_class_name.ends_with (".e") then
+							l_class_name := l_class_name.substring (1, l_class_name.count - 2)
+						end
+						l_class_name.to_upper
 
-						l_ast := parser.parse_string (l_content)
-						if attached l_ast as la_ast and then not la_ast.has_errors then
-							across la_ast.classes as cls loop
-								create l_class_metrics.make (a_lib_name, cls.name, a_path)
-								l_class_metrics.set_has_invariant (l_has_invariant)
+						-- Track counts before analysis to compute deltas
+						l_old_features := analyzer.total_features
+						l_old_requires := analyzer.total_with_require
+						l_old_ensures := analyzer.total_with_ensure
+						l_old_classes := analyzer.total_classes
 
-								total_classes := total_classes + 1
-								a_lib_metrics.increment_class_count
-								if l_has_invariant then
-									total_with_invariant := total_with_invariant + 1
-								end
+						-- Use shared analyzer
+						analyzer.analyze_file_content (l_content, l_class_name, a_lib_name, a_path)
 
-								across cls.features as feat loop
-									-- Skip attributes for DbC scoring (they don't have contracts)
-									if not feat.is_attribute then
-										create l_feature_metrics.make (a_lib_name, cls.name, feat.name)
-										l_feature_metrics.set_has_require (not feat.precondition.is_empty)
-										l_feature_metrics.set_has_ensure (not feat.postcondition.is_empty)
-										feature_metrics.extend (l_feature_metrics)
-
-										total_features := total_features + 1
-										a_lib_metrics.increment_feature_count
-										l_class_metrics.increment_feature_count
-
-										if not feat.precondition.is_empty then
-											total_with_require := total_with_require + 1
-											a_lib_metrics.increment_require_count
-											l_class_metrics.increment_require_count
-										end
-
-										if not feat.postcondition.is_empty then
-											total_with_ensure := total_with_ensure + 1
-											a_lib_metrics.increment_ensure_count
-											l_class_metrics.increment_ensure_count
-										end
-									end
-								end
-
-								l_class_metrics.calculate_score
-								class_metrics.force (l_class_metrics, a_lib_name + "." + cls.name)
+						-- Update library metrics with deltas
+						a_lib_metrics.increment_class_count
+						if analyzer.total_features > l_old_features then
+							across 1 |..| (analyzer.total_features - l_old_features) as i loop
+								a_lib_metrics.increment_feature_count
+							end
+						end
+						if analyzer.total_with_require > l_old_requires then
+							across 1 |..| (analyzer.total_with_require - l_old_requires) as i loop
+								a_lib_metrics.increment_require_count
+							end
+						end
+						if analyzer.total_with_ensure > l_old_ensures then
+							across 1 |..| (analyzer.total_with_ensure - l_old_ensures) as i loop
+								a_lib_metrics.increment_ensure_count
 							end
 						end
 					end
