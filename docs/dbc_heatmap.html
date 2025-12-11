@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DbC Heatmap - Simple Eiffel Ecosystem</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 2rem;
+    border-bottom: 1px solid #21262d;
+  }
+  h1 { color: #f0f6fc; font-size: 2rem; }
+  .subtitle { color: #8b949e; margin-top: 0.5rem; }
+  .summary {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    padding: 1.5rem;
+    background: #161b22;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+    padding: 1rem;
+  }
+  .stat .value {
+    display: block;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ff4500;
+  }
+  .stat .label {
+    color: #8b949e;
+    font-size: 0.875rem;
+  }
+  .legend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    font-size: 0.875rem;
+  }
+  .legend .scale {
+    width: 200px;
+    height: 20px;
+    background: linear-gradient(to right, #1a1a1a, #2d1f3d, #4a2c4a, #8b4513, #cd5c00, #ff4500);
+    border-radius: 4px;
+  }
+  .cold { color: #8b949e; }
+  .hot { color: #ff4500; }
+  #visualization {
+    padding: 2rem;
+    min-height: 600px;
+  }
+  .node {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .node:hover {
+    filter: brightness(1.3);
+  }
+  .node text {
+    fill: #c9d1d9;
+    font-size: 11px;
+    pointer-events: none;
+  }
+  .link {
+    stroke: #30363d;
+    stroke-opacity: 0.6;
+  }
+  .details {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #21262d;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #30363d;
+  }
+  .details h3 { color: #f0f6fc; margin-bottom: 0.5rem; }
+</style></head>
+<body>
+  <div id="app" x-data="heatmapApp()">
+    <header>
+      <h1>Design by Contract Heatmap</h1>
+      <p class="subtitle">Simple Eiffel Ecosystem</p>
+    </header>
+    <div class="summary">
+      <div class="stat">
+        <span class="value">34%</span>
+        <span class="label">Overall Score</span>
+      </div>
+      <div class="stat">
+        <span class="value">33</span>
+        <span class="label">Libraries</span>
+      </div>
+      <div class="stat">
+        <span class="value">105</span>
+        <span class="label">Classes</span>
+      </div>
+      <div class="stat">
+        <span class="value">1080</span>
+        <span class="label">Features</span>
+      </div>
+      <div class="stat">
+        <span class="value">401</span>
+        <span class="label">Requires</span>
+      </div>
+      <div class="stat">
+        <span class="value">346</span>
+        <span class="label">Ensures</span>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="cold">Cold (0%)</span>
+      <div class="scale"></div>
+      <span class="hot">Hot (100%)</span>
+    </div>
+    <div id="visualization"></div>
+    <div class="details" x-show="selectedNode">
+      <h3 x-text="selectedNode?.name"></h3>
+      <p>Score: <span x-text="selectedNode?.score + '%'"></span></p>
+    </div>
+  </div>
+  <script>
+    const data = {"total_features":1080,"total_with_require":401,"total_with_ensure":346,"total_classes":105,"total_with_invariant":76,"overall_score":34,"libraries":[{"name":"simple_json","score":41,"color":"#4a2c4a","class_count":15,"feature_count":81,"require_count":41,"ensure_count":26,"classes":[{"name":"SIMPLE_JSON","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":true},{"name":"SIMPLE_JSON_ERROR","score":67,"color":"#8b4513","features":8,"requires":3,"ensures":6,"has_invariant":true},{"name":"SIMPLE_JSON_VALUE","score":37,"color":"#4a2c4a","features":30,"requires":16,"ensures":3,"has_invariant":true},{"name":"SIMPLE_JSON_MERGE_PATCH_RESULT","score":99,"color":"#ff4500","features":3,"requires":2,"ensures":3,"has_invariant":true},{"name":"SIMPLE_JSON_PATCH_OPERATION","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":true},{"name":"SIMPLE_JSON_PATCH_RESULT","score":99,"color":"#ff4500","features":3,"requires":2,"ensures":3,"has_invariant":true},{"name":"SIMPLE_JSON_POINTER","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":true},{"name":"SIMPLE_JSON_SCHEMA","score":37,"color":"#4a2c4a","features":24,"requires":13,"ensures":2,"has_invariant":true},{"name":"SIMPLE_JSON_SCHEMA_VALIDATION_ERROR","score":90,"color":"#ff4500","features":2,"requires":1,"ensures":2,"has_invariant":true},{"name":"SIMPLE_JSON_SCHEMA_VALIDATION_RESULT","score":74,"color":"#8b4513","features":4,"requires":1,"ensures":4,"has_invariant":true},{"name":"SIMPLE_JSON_SCHEMA_VALIDATOR","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":true},{"name":"SIMPLE_JSON_STREAM","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":true},{"name":"SIMPLE_JSON_STREAM_CURSOR","score":36,"color":"#4a2c4a","features":5,"requires":2,"ensures":1,"has_invariant":true},{"name":"SIMPLE_JSON_STREAM_ELEMENT","score":90,"color":"#ff4500","features":2,"requires":1,"ensures":2,"has_invariant":true},{"name":"SIMPLE_JSON_PRETTY_PRINTER","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":true}]},{"name":"simple_sql","score":34,"color":"#4a2c4a","class_count":34,"feature_count":409,"require_count":155,"ensure_count":125,"classes":[{"name":"AGENT_PART_COMPARATOR","score":60,"color":"#8b4513","features":2,"requires":1,"ensures":1,"has_invariant":true},{"name":"CPM_ACTIVITY","score":75,"color":"#cd5c00","features":11,"requires":7,"ensures":7,"has_invariant":true},{"name":"CPM_DEPENDENCY","score":48,"color":"#4a2c4a","features":11,"requires":4,"ensures":5,"has_invariant":true},{"name":"CPM_PROJECT","score":72,"color":"#8b4513","features":10,"requires":6,"ensures":6,"has_invariant":true},{"name":"DMS_COMMENT","score":36,"color":"#4a2c4a","features":18,"requires":7,"ensures":4,"has_invariant":true},{"name":"DMS_DOCUMENT_VERSION","score":18,"color":"#2d1f3d","features":10,"requires":2,"ensures":1,"has_invariant":true},{"name":"DMS_FOLDER","score":49,"color":"#4a2c4a","features":17,"requires":9,"ensures":5,"has_invariant":true},{"name":"DMS_SCHEMA_VERSION","score":33,"color":"#4a2c4a","features":7,"requires":3,"ensures":1,"has_invariant":true},{"name":"DMS_TAG","score":37,"color":"#4a2c4a","features":8,"requires":4,"ensures":1,"has_invariant":true},{"name":"DMS_USER","score":60,"color":"#8b4513","features":14,"requires":6,"ensures":8,"has_invariant":true},{"name":"HABIT_ACHIEVEMENT","score":48,"color":"#4a2c4a","features":15,"requires":5,"ensures":7,"has_invariant":true},{"name":"HABIT_CATEGORY","score":86,"color":"#cd5c00","features":9,"requires":6,"ensures":7,"has_invariant":true},{"name":"HABIT_COMPLETION","score":55,"color":"#8b4513","features":14,"requires":7,"ensures":6,"has_invariant":true},{"name":"HABIT_STREAK","score":50,"color":"#8b4513","features":13,"requires":5,"ensures":6,"has_invariant":true},{"name":"HABIT_TRACKER_APP","score":12,"color":"#2d1f3d","features":61,"requires":8,"ensures":7,"has_invariant":false},{"name":"HABIT_USER_ACHIEVEMENT","score":66,"color":"#8b4513","features":10,"requires":6,"ensures":5,"has_invariant":true},{"name":"SIMPLE_SQL_COLUMN_INFO","score":12,"color":"#2d1f3d","features":10,"requires":1,"ensures":1,"has_invariant":true},{"name":"SIMPLE_SQL_CURSOR_ITERATOR","score":48,"color":"#4a2c4a","features":10,"requires":7,"ensures":1,"has_invariant":true},{"name":"SIMPLE_SQL_ERROR","score":27,"color":"#4a2c4a","features":19,"requires":2,"ensures":7,"has_invariant":true},{"name":"SIMPLE_SQL_FOREIGN_KEY_INFO","score":69,"color":"#8b4513","features":6,"requires":4,"ensures":3,"has_invariant":true},{"name":"SIMPLE_SQL_INDEX_INFO","score":39,"color":"#4a2c4a","features":6,"requires":2,"ensures":2,"has_invariant":true},{"name":"SIMPLE_SQL_INSERT_BUILDER","score":51,"color":"#8b4513","features":16,"requires":9,"ensures":5,"has_invariant":true},{"name":"SIMPLE_SQL_MIGRATION","score":50,"color":"#8b4513","features":4,"requires":2,"ensures":2,"has_invariant":false},{"name":"SIMPLE_SQL_PAGE","score":19,"color":"#2d1f3d","features":6,"requires":1,"ensures":1,"has_invariant":true},{"name":"SIMPLE_SQL_RAW_EXPRESSION","score":100,"color":"#ff4500","features":1,"requires":1,"ensures":1,"has_invariant":true},{"name":"SIMPLE_SQL_SCHEMA","score":32,"color":"#4a2c4a","features":18,"requires":9,"ensures":1,"has_invariant":true},{"name":"SIMPLE_SQL_TABLE_INFO","score":48,"color":"#4a2c4a","features":15,"requires":7,"ensures":5,"has_invariant":true},{"name":"TODO_APP","score":43,"color":"#4a2c4a","features":22,"requires":8,"ensures":8,"has_invariant":true},{"name":"WMS_PROFILE_APP","score":0,"color":"#1a1a1a","features":7,"requires":0,"ensures":0,"has_invariant":false},{"name":"WMS_LOCATION","score":30,"color":"#4a2c4a","features":6,"requires":2,"ensures":1,"has_invariant":true},{"name":"WMS_PRODUCT","score":42,"color":"#4a2c4a","features":7,"requires":3,"ensures":2,"has_invariant":true},{"name":"WMS_RESERVATION","score":39,"color":"#4a2c4a","features":6,"requires":3,"ensures":1,"has_invariant":true},{"name":"WMS_STOCK","score":60,"color":"#8b4513","features":12,"requires":6,"ensures":6,"has_invariant":true},{"name":"WMS_WAREHOUSE","score":21,"color":"#2d1f3d","features":8,"requires":2,"ensures":1,"has_invariant":true}]},{"name":"simple_xml","score":80,"color":"#cd5c00","class_count":1,"feature_count":5,"require_count":4,"ensure_count":4,"classes":[{"name":"SIMPLE_XML","score":80,"color":"#cd5c00","features":5,"requires":4,"ensures":4,"has_invariant":false}]},{"name":"simple_file","score":0,"color":"#1a1a1a","class_count":2,"feature_count":48,"require_count":0,"ensure_count":0,"classes":[{"name":"SIMPLE_FILES","score":0,"color":"#1a1a1a","features":23,"requires":0,"ensures":0,"has_invariant":false},{"name":"SIMPLE_PATH","score":0,"color":"#1a1a1a","features":25,"requires":0,"ensures":0,"has_invariant":true}]},{"name":"simple_process","score":17,"color":"#2d1f3d","class_count":1,"feature_count":17,"require_count":5,"ensure_count":1,"classes":[{"name":"SIMPLE_PROCESS","score":17,"color":"#2d1f3d","features":17,"requires":5,"ensures":1,"has_invariant":false}]},{"name":"simple_console","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_config","score":0,"color":"#1a1a1a","class_count":1,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[{"name":"SIMPLE_CONFIG","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":false}]},{"name":"simple_http","score":44,"color":"#4a2c4a","class_count":3,"feature_count":57,"require_count":26,"ensure_count":25,"classes":[{"name":"SIMPLE_HTTP_LOGGER_INTERCEPTOR","score":16,"color":"#2d1f3d","features":9,"requires":1,"ensures":2,"has_invariant":false},{"name":"SIMPLE_HTTP_REQUEST_BUILDER","score":55,"color":"#8b4513","features":33,"requires":19,"ensures":12,"has_invariant":true},{"name":"SIMPLE_HTTP_RETRY_POLICY","score":67,"color":"#8b4513","features":15,"requires":6,"ensures":11,"has_invariant":true}]},{"name":"simple_encryption","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_regex","score":76,"color":"#cd5c00","class_count":2,"feature_count":21,"require_count":13,"ensure_count":19,"classes":[{"name":"SIMPLE_REGEX_MATCH","score":100,"color":"#ff4500","features":10,"requires":8,"ensures":9,"has_invariant":true},{"name":"SIMPLE_REGEX_MATCH_LIST","score":81,"color":"#cd5c00","features":11,"requires":5,"ensures":10,"has_invariant":true}]},{"name":"simple_datetime","score":37,"color":"#4a2c4a","class_count":2,"feature_count":31,"require_count":9,"ensure_count":14,"classes":[{"name":"SIMPLE_DATE_RANGE","score":45,"color":"#4a2c4a","features":27,"requires":8,"ensures":13,"has_invariant":true},{"name":"SIMPLE_DATE_RANGE_CURSOR","score":30,"color":"#4a2c4a","features":4,"requires":1,"ensures":1,"has_invariant":true}]},{"name":"simple_uuid","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_base64","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_csv","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_markdown","score":46,"color":"#4a2c4a","class_count":3,"feature_count":46,"require_count":33,"ensure_count":10,"classes":[{"name":"MD_PARSE_STATE","score":68,"color":"#8b4513","features":7,"requires":1,"ensures":7,"has_invariant":true},{"name":"MD_TABLE_PROCESSOR","score":30,"color":"#4a2c4a","features":10,"requires":5,"ensures":1,"has_invariant":false},{"name":"SIMPLE_MARKDOWN","score":60,"color":"#8b4513","features":29,"requires":27,"ensures":2,"has_invariant":true}]},{"name":"simple_smtp","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_hash","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_logger","score":50,"color":"#8b4513","class_count":1,"feature_count":5,"require_count":0,"ensure_count":5,"classes":[{"name":"SIMPLE_LOG_TIMER","score":60,"color":"#8b4513","features":5,"requires":0,"ensures":5,"has_invariant":true}]},{"name":"simple_testing","score":0,"color":"#1a1a1a","class_count":1,"feature_count":1,"require_count":0,"ensure_count":0,"classes":[{"name":"TEST_SET_BRIDGE","score":0,"color":"#1a1a1a","features":1,"requires":0,"ensures":0,"has_invariant":false}]},{"name":"simple_win32_api","score":0,"color":"#1a1a1a","class_count":1,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[{"name":"WIN32","score":0,"color":"#1a1a1a","features":0,"requires":0,"ensures":0,"has_invariant":false}]},{"name":"simple_registry","score":13,"color":"#2d1f3d","class_count":1,"feature_count":34,"require_count":9,"ensure_count":0,"classes":[{"name":"SIMPLE_REGISTRY","score":13,"color":"#2d1f3d","features":34,"requires":9,"ensures":0,"has_invariant":false}]},{"name":"simple_clipboard","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_watcher","score":0,"color":"#1a1a1a","class_count":1,"feature_count":6,"require_count":0,"ensure_count":0,"classes":[{"name":"SIMPLE_WATCH_EVENT","score":0,"color":"#1a1a1a","features":6,"requires":0,"ensures":0,"has_invariant":false}]},{"name":"simple_env","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_randomizer","score":50,"color":"#8b4513","class_count":1,"feature_count":9,"require_count":5,"ensure_count":4,"classes":[{"name":"SIMPLE_RANDOMIZER","score":60,"color":"#8b4513","features":9,"requires":5,"ensures":4,"has_invariant":true}]},{"name":"simple_web","score":70,"color":"#8b4513","class_count":7,"feature_count":55,"require_count":35,"ensure_count":43,"classes":[{"name":"SIMPLE_WEB_CLAUDE_CLIENT","score":73,"color":"#8b4513","features":9,"requires":5,"ensures":6,"has_invariant":true},{"name":"SIMPLE_WEB_OPENAI_CLIENT","score":76,"color":"#cd5c00","features":7,"requires":4,"ensures":5,"has_invariant":true},{"name":"SIMPLE_WEB_CLIENT","score":88,"color":"#cd5c00","features":9,"requires":8,"ensures":8,"has_invariant":false},{"name":"SIMPLE_WEB_REQUEST","score":100,"color":"#ff4500","features":13,"requires":12,"ensures":13,"has_invariant":true},{"name":"SIMPLE_WEB_MIDDLEWARE_PIPELINE","score":50,"color":"#8b4513","features":7,"requires":3,"ensures":3,"has_invariant":true},{"name":"SIMPLE_WEB_SERVER_EXECUTION","score":16,"color":"#2d1f3d","features":3,"requires":0,"ensures":1,"has_invariant":false},{"name":"SIMPLE_WEB_SERVER_ROUTER","score":71,"color":"#8b4513","features":7,"requires":3,"ensures":7,"has_invariant":false}]},{"name":"simple_htmx","score":36,"color":"#4a2c4a","class_count":1,"feature_count":19,"require_count":0,"ensure_count":14,"classes":[{"name":"HTMX_RENDER_CONTEXT","score":43,"color":"#4a2c4a","features":19,"requires":0,"ensures":14,"has_invariant":true}]},{"name":"simple_alpine","score":0,"color":"#1a1a1a","class_count":0,"feature_count":0,"require_count":0,"ensure_count":0,"classes":[]},{"name":"simple_websocket","score":80,"color":"#cd5c00","class_count":1,"feature_count":5,"require_count":3,"ensure_count":5,"classes":[{"name":"WS_MESSAGE","score":96,"color":"#ff4500","features":5,"requires":3,"ensures":5,"has_invariant":true}]},{"name":"simple_validation","score":67,"color":"#8b4513","class_count":2,"feature_count":14,"require_count":6,"ensure_count":13,"classes":[{"name":"VALIDATION_ERROR","score":96,"color":"#ff4500","features":5,"requires":3,"ensures":5,"has_invariant":true},{"name":"VALIDATION_RESULT","score":73,"color":"#8b4513","features":9,"requires":3,"ensures":8,"has_invariant":true}]},{"name":"simple_ai_client","score":31,"color":"#4a2c4a","class_count":5,"feature_count":48,"require_count":18,"ensure_count":12,"classes":[{"name":"AI_CLIENT","score":50,"color":"#8b4513","features":2,"requires":0,"ensures":2,"has_invariant":false},{"name":"AI_EMBEDDING","score":32,"color":"#4a2c4a","features":18,"requires":10,"ensures":0,"has_invariant":true},{"name":"AI_EMBEDDING_RESPONSE","score":96,"color":"#ff4500","features":5,"requires":3,"ensures":5,"has_invariant":true},{"name":"AI_RESPONSE","score":96,"color":"#ff4500","features":5,"requires":3,"ensures":5,"has_invariant":true},{"name":"AI_EMBEDDING_STORE","score":5,"color":"#2d1f3d","features":18,"requires":2,"ensures":0,"has_invariant":false}]},{"name":"simple_gui_designer","score":19,"color":"#2d1f3d","class_count":17,"feature_count":160,"require_count":38,"ensure_count":25,"classes":[{"name":"GUI_DESIGNER_APP","score":0,"color":"#1a1a1a","features":1,"requires":0,"ensures":0,"has_invariant":false},{"name":"GUI_DESIGNER_SERVER","score":13,"color":"#2d1f3d","features":9,"requires":1,"ensures":1,"has_invariant":true},{"name":"GDS_CONTAINER_HANDLERS","score":0,"color":"#1a1a1a","features":4,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_CONTROL_HANDLERS","score":0,"color":"#1a1a1a","features":7,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_DOWNLOAD_UPLOAD_HANDLERS","score":0,"color":"#1a1a1a","features":5,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_EXPORT_HANDLERS","score":0,"color":"#1a1a1a","features":4,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_HTMX_HANDLERS","score":0,"color":"#1a1a1a","features":11,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_SCREEN_HANDLERS","score":0,"color":"#1a1a1a","features":5,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_SHARED_STATE","score":0,"color":"#1a1a1a","features":11,"requires":0,"ensures":0,"has_invariant":false},{"name":"GDS_SPEC_HANDLERS","score":0,"color":"#1a1a1a","features":7,"requires":0,"ensures":0,"has_invariant":false},{"name":"GUI_API_ENDPOINT","score":20,"color":"#2d1f3d","features":14,"requires":4,"ensures":1,"has_invariant":true},{"name":"GUI_DESIGNER_CONTROL","score":51,"color":"#8b4513","features":38,"requires":18,"ensures":15,"has_invariant":true},{"name":"GUI_DESIGNER_SCREEN","score":40,"color":"#4a2c4a","features":13,"requires":6,"ensures":3,"has_invariant":true},{"name":"GUI_DESIGNER_TAB_PANEL","score":42,"color":"#4a2c4a","features":7,"requires":2,"ensures":3,"has_invariant":true},{"name":"GUI_FINAL_CONTROL","score":14,"color":"#2d1f3d","features":8,"requires":2,"ensures":0,"has_invariant":true},{"name":"GUI_FINAL_SCREEN","score":16,"color":"#2d1f3d","features":7,"requires":2,"ensures":0,"has_invariant":true},{"name":"GUI_FINAL_SPEC","score":32,"color":"#4a2c4a","features":9,"requires":3,"ensures":2,"has_invariant":true}]},{"name":"simple_setup","score":11,"color":"#2d1f3d","class_count":2,"feature_count":9,"require_count":1,"ensure_count":1,"classes":[{"name":"SST_APPLICATION","score":0,"color":"#1a1a1a","features":4,"requires":0,"ensures":0,"has_invariant":false},{"name":"SST_LIBRARY_INFO","score":20,"color":"#2d1f3d","features":5,"requires":1,"ensures":1,"has_invariant":false}]}]};
+    function heatmapApp() {
+      return {
+        selectedNode: null,
+        selectNode(node) {
+          this.selectedNode = node;
+        }
+      }
+    }
+
+    function getColor(score) {
+      if (score === 0) return '#1a1a1a';
+      if (score < 25) return '#2d1f3d';
+      if (score < 50) return '#4a2c4a';
+      if (score < 75) return '#8b4513';
+      if (score < 90) return '#cd5c00';
+      return '#ff4500';
+    }
+
+    const width = Math.max(document.getElementById('visualization').clientWidth, 1200);
+    const height = 800;
+
+    const svg = d3.select('#visualization')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', [0, 0, width, height]);
+
+    // Flatten hierarchy to nodes and links
+    const nodes = [];
+    const links = [];
+
+    // Center node - Universe
+    nodes.push({
+      id: 'universe',
+      name: 'Universe',
+      score: data.overall_score,
+      color: getColor(data.overall_score),
+      radius: 50,
+      x: width / 2,
+      y: height / 2
+    });
+
+    // Library nodes - arranged in a circle initially
+    const libCount = data.libraries.length;
+    data.libraries.forEach((lib, i) => {
+      const angle = (2 * Math.PI * i) / libCount;
+      const dist = 200;
+      nodes.push({
+        id: 'lib_' + lib.name,
+        name: lib.name.replace('simple_', ''),
+        fullName: lib.name,
+        score: lib.score,
+        color: lib.color,
+        features: lib.feature_count,
+        requires: lib.require_count,
+        ensures: lib.ensure_count,
+        radius: 20 + Math.min(lib.class_count, 10),
+        x: width/2 + Math.cos(angle) * dist,
+        y: height/2 + Math.sin(angle) * dist
+      });
+      links.push({ source: 'universe', target: 'lib_' + lib.name });
+
+      // Class nodes - only show top 5 per library to avoid clutter
+      lib.classes.slice(0, 5).forEach((cls, j) => {
+        const clsAngle = angle + (j - 2) * 0.15;
+        const clsDist = 350;
+        nodes.push({
+          id: 'lib_' + lib.name + '_' + cls.name,
+          name: cls.name,
+          score: cls.score,
+          color: cls.color,
+          features: cls.features,
+          radius: 8,
+          x: width/2 + Math.cos(clsAngle) * clsDist,
+          y: height/2 + Math.sin(clsAngle) * clsDist
+        });
+        links.push({ source: 'lib_' + lib.name, target: 'lib_' + lib.name + '_' + cls.name });
+      });
+    });
+
+    // Create force simulation with stronger forces
+    const simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(d => {
+        // Shorter links for class nodes
+        return d.target.id && d.target.id.includes('_') ? 60 : 120;
+      }).strength(0.5))
+      .force('charge', d3.forceManyBody().strength(d => d.radius > 30 ? -800 : -300))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(d => d.radius + 15))
+      .force('x', d3.forceX(width / 2).strength(0.05))
+      .force('y', d3.forceY(height / 2).strength(0.05));
+
+    // Draw links
+    const link = svg.append('g')
+      .attr('stroke', '#30363d')
+      .attr('stroke-opacity', 0.4)
+      .selectAll('line')
+      .data(links)
+      .join('line')
+      .attr('stroke-width', d => d.source.id === 'universe' ? 2 : 1);
+
+    // Draw nodes
+    const node = svg.append('g')
+      .selectAll('g')
+      .data(nodes)
+      .join('g')
+      .attr('class', 'node')
+      .style('cursor', 'grab')
+      .call(d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended));
+
+    // Node circles
+    node.append('circle')
+      .attr('r', d => d.radius)
+      .attr('fill', d => d.color)
+      .attr('stroke', d => d.score >= 50 ? '#ff6b35' : '#444')
+      .attr('stroke-width', d => d.score >= 75 ? 3 : 1);
+
+    // Node labels (only for library+ size nodes)
+    node.filter(d => d.radius >= 15)
+      .append('text')
+      .attr('dy', d => d.radius + 14)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#c9d1d9')
+      .attr('font-size', d => d.radius > 30 ? '14px' : '11px')
+      .attr('font-weight', d => d.radius > 30 ? 'bold' : 'normal')
+      .text(d => d.name.length > 12 ? d.name.substring(0, 10) + '..' : d.name);
+
+    // Tooltips
+    node.append('title')
+      .text(d => d.name + '\nScore: ' + d.score + '%' +
+        (d.features ? '\nFeatures: ' + d.features : '') +
+        (d.requires ? '\nRequires: ' + d.requires : '') +
+        (d.ensures ? '\nEnsures: ' + d.ensures : ''));
+
+    // Tick function
+    simulation.on('tick', () => {
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+
+      node.attr('transform', d => 'translate(' + d.x + ',' + d.y + ')');
+    });
+
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    // Reheat simulation for better initial layout
+    simulation.alpha(1).restart();  </script>
+</body>
+</html>
