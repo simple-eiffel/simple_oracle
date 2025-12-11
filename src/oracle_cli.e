@@ -12,6 +12,7 @@ note
 			tests    - Show recent test history
 			git      - Scan and log git history
 			commits  - Show recent commits
+			dbc      - Generate DbC heatmap report
 			status   - Ecosystem health check
 			scan     - Rescan filesystem for libraries
 			ingest   - Ingest reference docs into knowledge base
@@ -101,6 +102,8 @@ feature {NONE} -- Command Parsing
 					execute_git
 				elseif l_command.same_string ("commits") then
 					execute_commits
+				elseif l_command.same_string ("dbc") then
+					execute_dbc
 				elseif l_command.same_string ("help") or l_command.same_string ("--help") or l_command.same_string ("-h") then
 					print_help
 				else
@@ -710,6 +713,51 @@ feature {NONE} -- Commands
 			io.put_string ("%NTotal deletions: -")
 			io.put_integer (l_stats.total_deletions)
 			io.new_line
+		end
+
+	execute_dbc
+			-- Execute dbc command - generate DbC heatmap report.
+			-- Usage: oracle-cli dbc [output_file.html]
+		local
+			l_analyzer: DBC_HEATMAP_ANALYZER
+			l_ucf: SIMPLE_UCF
+			l_output: STRING
+		do
+			io.put_string ("=== DbC HEATMAP ANALYZER ===%N%N")
+			io.put_string ("Discovering libraries from environment...%N")
+
+			create l_ucf.make
+			l_ucf.discover_from_environment
+
+			if l_ucf.is_valid then
+				io.put_string ("Found " + l_ucf.libraries.count.out + " libraries%N%N")
+				io.put_string ("Analyzing DbC coverage...%N")
+
+				create l_analyzer.make
+				l_analyzer.analyze_from_ucf (l_ucf)
+
+				-- Output summary
+				io.put_string ("%N=== SUMMARY ===%N")
+				io.put_string ("Overall Score: " + l_analyzer.overall_score.out + "%%%N")
+				io.put_string ("Total Classes: " + l_analyzer.total_classes.out + "%N")
+				io.put_string ("Total Features: " + l_analyzer.total_features.out + "%N")
+				io.put_string ("With Require: " + l_analyzer.total_with_require.out + "%N")
+				io.put_string ("With Ensure: " + l_analyzer.total_with_ensure.out + "%N")
+				io.put_string ("With Invariant: " + l_analyzer.total_with_invariant.out + "%N")
+
+				-- Generate HTML report
+				if args.argument_count >= 2 then
+					l_output := args.argument (2).to_string_8
+				else
+					l_output := "dbc_heatmap.html"
+				end
+
+				io.put_string ("%NGenerating HTML report: " + l_output + "%N")
+				l_analyzer.generate_html_report (l_output)
+				io.put_string ("Done! Open " + l_output + " in a browser to view.%N")
+			else
+				io.put_string ("ERROR: No SIMPLE_* environment variables found%N")
+			end
 		end
 
 	execute_handoff
