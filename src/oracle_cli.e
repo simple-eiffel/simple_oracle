@@ -3,23 +3,25 @@ note
 		ORACLE_CLI - Command-line interface for simple_oracle.
 
 		Commands:
-			boot     - Full boot sequence (expertise + context injection)
-			query    - Natural language query
-			log      - Log an event
-			compile  - Run ec.exe and log results
-			compiles - Show recent compile history
-			test     - Run tests and log results
-			tests    - Show recent test history
-			git      - Scan and log git history
-			commits  - Show recent commits
-			dbc      - Generate DbC heatmap report
-			status   - Ecosystem health check
-			scan     - Rescan filesystem for libraries
-			ingest   - Ingest reference docs into knowledge base
-			learn    - Add a learning to knowledge base
-			handoff  - Record/view session handoff
-			check    - Show guidance (for "see oracle" trigger)
-			help     - Show help
+			boot          - Full boot sequence (expertise + context injection)
+			query         - Natural language query
+			log           - Log an event
+			compile       - Run ec.exe and log results
+			compiles      - Show recent compile history
+			test          - Run tests and log results
+			tests         - Show recent test history
+			git           - Scan and log git history
+			commits       - Show recent commits
+			dbc           - Generate DbC heatmap report
+			scan-compiled - Scan EIFGENs metadata for accurate stats
+			census        - Show ecosystem-wide statistics from compiled data
+			status        - Ecosystem health check
+			scan          - Rescan filesystem for libraries
+			ingest        - Ingest reference docs into knowledge base
+			learn         - Add a learning to knowledge base
+			handoff       - Record/view session handoff
+			check         - Show guidance (for "see oracle" trigger)
+			help          - Show help
 
 		Usage:
 			oracle-cli boot
@@ -30,6 +32,8 @@ note
 			oracle-cli check
 			oracle-cli status
 			oracle-cli scan
+			oracle-cli scan-compiled [library]
+			oracle-cli census
 	]"
 	author: "Larry Rix"
 	date: "$Date$"
@@ -104,6 +108,10 @@ feature {NONE} -- Command Parsing
 					execute_commits
 				elseif l_command.same_string ("dbc") then
 					execute_dbc
+				elseif l_command.same_string ("scan-compiled") then
+					execute_scan_compiled
+				elseif l_command.same_string ("census") then
+					execute_census
 				elseif l_command.same_string ("help") or l_command.same_string ("--help") or l_command.same_string ("-h") then
 					print_help
 				else
@@ -760,6 +768,142 @@ feature {NONE} -- Commands
 			end
 		end
 
+	execute_scan_compiled
+			-- Execute scan-compiled command - scan EIFGENs metadata for accurate stats.
+			-- Usage: oracle-cli scan-compiled [library]
+		local
+			l_library: STRING_32
+			l_scanner: ORACLE_ECOSYSTEM_SCANNER
+			l_ucf: SIMPLE_UCF
+		do
+			io.put_string ("=== SCAN COMPILED (EIFGENs Metadata) ===%N%N")
+
+			-- Get library list from UCF
+			create l_ucf.make
+			l_ucf.discover_from_environment
+
+			if not l_ucf.is_valid then
+				io.put_string ("ERROR: No SIMPLE_* environment variables found%N")
+			else
+				create l_scanner.make (oracle)
+
+				if args.argument_count >= 2 then
+					-- Scan specific library
+					l_library := args.argument (2)
+					io.put_string ("Scanning ")
+					io.put_string (l_library.to_string_8)
+					io.put_string ("...%N")
+					scan_single_library (l_scanner, l_library, l_ucf)
+				else
+					-- Scan all libraries
+					io.put_string ("Scanning all ")
+					io.put_integer (l_ucf.libraries.count)
+					io.put_string (" libraries...%N%N")
+					across l_ucf.libraries as lib loop
+						io.put_string ("  ")
+						io.put_string (lib.name.to_string_8)
+						io.put_string ("... ")
+						scan_single_library (l_scanner, lib.name, l_ucf)
+					end
+				end
+
+				io.put_string ("%N=== SCAN COMPLETE ===%N")
+			end
+		end
+
+	scan_single_library (a_scanner: ORACLE_ECOSYSTEM_SCANNER; a_library: STRING_32; a_ucf: SIMPLE_UCF)
+			-- Scan a single library's source code for statistics.
+		local
+			l_lib: detachable UCF_LIBRARY
+			l_src_path: STRING_32
+			l_parser: SOURCE_STATS_PARSER
+			l_stats: TUPLE [class_count, feature_count, attribute_count, lines_of_code,
+				precondition_count, postcondition_count, invariant_count: INTEGER;
+				src_path: STRING_32]
+			l_src_file: SIMPLE_FILE
+		do
+			l_lib := a_ucf.library_by_name (a_library)
+			if attached l_lib then
+				-- Find src directory
+				l_src_path := l_lib.resolved_path + "/src"
+				create l_src_file.make (l_src_path)
+
+				if l_src_file.is_directory then
+					-- Parse source files
+					create l_parser.make
+					l_parser.parse_source (l_src_path)
+
+					if l_parser.is_parsed then
+						-- Store stats
+						l_stats := [l_parser.class_count, l_parser.feature_count, l_parser.attribute_count,
+							l_parser.lines_of_code, l_parser.precondition_count, l_parser.postcondition_count,
+							l_parser.invariant_count, l_src_path]
+						oracle.store_compiled_stats (a_library, "source", l_stats)
+
+						io.put_string (l_parser.class_count.out)
+						io.put_string (" classes, ")
+						io.put_string (l_parser.feature_count.out)
+						io.put_string (" features, ")
+						io.put_string (l_parser.lines_of_code.out)
+						io.put_string (" LOC%N")
+					else
+						io.put_string ("PARSE ERROR")
+						across l_parser.errors as err loop
+							io.put_string (" - ")
+							io.put_string (err.to_string_8)
+						end
+						io.new_line
+					end
+				else
+					io.put_string ("no src/ directory%N")
+				end
+			else
+				io.put_string ("library not found%N")
+			end
+		end
+
+	find_e1_directory (a_eifgens_path: STRING_32): STRING_32
+			-- Find first E1 directory in EIFGENs subdirectories.
+		local
+			l_file: SIMPLE_FILE
+			l_dirs: ARRAYED_LIST [STRING_32]
+			l_candidate: STRING_32
+			l_candidate_file: SIMPLE_FILE
+		do
+			create Result.make_empty
+			create l_file.make (a_eifgens_path)
+
+			-- List directories in EIFGENs
+			l_dirs := l_file.directories
+			across l_dirs as dir loop
+				l_candidate := a_eifgens_path + "/" + dir + "/W_code/E1"
+				create l_candidate_file.make (l_candidate)
+				if l_candidate_file.is_directory then
+					Result := l_candidate
+				end
+			end
+		end
+
+	extract_target_from_path (a_e1_path: STRING_32): STRING_32
+			-- Extract target name from E1 path.
+			-- Path like: /path/EIFGENs/simple_json_tests/W_code/E1
+		local
+			l_parts: LIST [STRING_32]
+		do
+			l_parts := a_e1_path.split ('/')
+			if l_parts.count >= 3 then
+				Result := l_parts [l_parts.count - 2] -- Target is 3rd from end
+			else
+				create Result.make_from_string ("unknown")
+			end
+		end
+
+	execute_census
+			-- Execute census command - show ecosystem-wide statistics from compiled data.
+		do
+			io.put_string (oracle.ecosystem_census.to_string_8)
+		end
+
 	execute_handoff
 			-- Execute handoff command - record session handoff for context continuity.
 			-- Usage: oracle-cli handoff <current_task> [work_in_progress] [next_steps] [blockers]
@@ -992,6 +1136,13 @@ COMMANDS:
   check             Show guidance, warnings, and rules for Claude
                     Run when Larry says "see oracle" or "consult oracle"
 
+  scan-compiled [lib]
+                    Scan EIFGENs metadata for accurate class/feature counts
+                    Example: oracle-cli scan-compiled simple_json
+
+  census            Show ecosystem-wide statistics from compiled data
+                    Aggregates class/feature/contract counts across all libraries
+
   help              Show this help message
 
 EXAMPLES:
@@ -1000,6 +1151,8 @@ EXAMPLES:
   oracle-cli git simple_oracle 20
   oracle-cli commits
   oracle-cli check
+  oracle-cli scan-compiled
+  oracle-cli census
 
 ]")
 		end

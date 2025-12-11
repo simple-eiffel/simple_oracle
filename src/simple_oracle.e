@@ -1297,6 +1297,332 @@ feature -- Ecosystem Statistics (Bean-Counter Metrics)
 			Result.append ("====================================================================%N")
 		end
 
+feature -- Compiled Statistics (EIFGENs Metadata)
+
+	store_compiled_stats (a_library, a_target: READABLE_STRING_GENERAL; a_stats: TUPLE [
+			class_count, feature_count, attribute_count, lines_of_code,
+			precondition_count, postcondition_count, invariant_count: INTEGER;
+			src_path: READABLE_STRING_GENERAL])
+			-- Store or update compiled statistics for a library/target.
+		require
+			is_ready: is_ready
+			library_not_empty: not a_library.is_empty
+			target_not_empty: not a_target.is_empty
+		do
+			clear_error
+			if attached disk_db as db then
+				db.execute_with_args (
+					"INSERT OR REPLACE INTO compiled_stats (library, target, class_count, feature_count, " +
+					"attribute_count, lines_of_code, precondition_count, postcondition_count, invariant_count, " +
+					"scanned_at, eifgens_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)",
+					<<a_library.to_string_32, a_target.to_string_32,
+					  a_stats.class_count, a_stats.feature_count, a_stats.attribute_count,
+					  a_stats.lines_of_code, a_stats.precondition_count, a_stats.postcondition_count,
+					  a_stats.invariant_count, a_stats.src_path.to_string_32>>)
+				if db.has_error then
+					set_error (db.last_error_message)
+				end
+			end
+		end
+
+	get_compiled_stats (a_library: READABLE_STRING_GENERAL): detachable TUPLE [
+			library, target: STRING_32;
+			class_count, feature_count, attribute_count, lines_of_code,
+			precondition_count, postcondition_count, invariant_count: INTEGER;
+			scanned_at, eifgens_path: STRING_32]
+			-- Get compiled statistics for a library.
+		require
+			is_ready: is_ready
+			library_not_empty: not a_library.is_empty
+		do
+			if attached disk_db as db then
+				if attached db.query_with_args (
+					"SELECT library, target, class_count, feature_count, attribute_count, lines_of_code, " +
+					"precondition_count, postcondition_count, invariant_count, scanned_at, eifgens_path " +
+					"FROM compiled_stats WHERE library = ? ORDER BY scanned_at DESC LIMIT 1",
+					<<a_library.to_string_32>>) as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						Result := [
+							safe_string (row.item (1)),
+							safe_string (row.item (2)),
+							safe_integer (row.item (3)),
+							safe_integer (row.item (4)),
+							safe_integer (row.item (5)),
+							safe_integer (row.item (6)),
+							safe_integer (row.item (7)),
+							safe_integer (row.item (8)),
+							safe_integer (row.item (9)),
+							safe_string (row.item (10)),
+							safe_string (row.item (11))
+						]
+					end
+				end
+			end
+		end
+
+	ecosystem_census: STRING_32
+			-- Generate comprehensive ecosystem census from compiled stats with statistical analysis.
+		require
+			is_ready: is_ready
+		local
+			l_total_classes, l_total_features, l_total_attrs, l_total_loc: INTEGER
+			l_total_pre, l_total_post, l_total_inv, l_total_contracts: INTEGER
+			l_lib_count: INTEGER
+			l_lib: STRING_32
+			l_classes, l_feats, l_loc: INTEGER
+			l_min_cls, l_max_cls, l_min_feat, l_max_feat, l_min_loc, l_max_loc: INTEGER
+			l_avg_cls, l_avg_feat, l_avg_loc: REAL_64
+			l_med_cls, l_med_feat, l_med_loc: INTEGER
+			l_density, l_contracts_per_feat: REAL_64
+			l_int_val: INTEGER
+		do
+			create Result.make (5000)
+			Result.append ("=== SIMPLE ECOSYSTEM CENSUS ===%N%N")
+
+			if attached disk_db as db then
+				-- Aggregate totals
+				if attached db.query ("SELECT COUNT(DISTINCT library), SUM(class_count), SUM(feature_count), " +
+					"SUM(attribute_count), SUM(lines_of_code), SUM(precondition_count), " +
+					"SUM(postcondition_count), SUM(invariant_count) FROM compiled_stats") as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_lib_count := safe_integer (row.item (1))
+						l_total_classes := safe_integer (row.item (2))
+						l_total_features := safe_integer (row.item (3))
+						l_total_attrs := safe_integer (row.item (4))
+						l_total_loc := safe_integer (row.item (5))
+						l_total_pre := safe_integer (row.item (6))
+						l_total_post := safe_integer (row.item (7))
+						l_total_inv := safe_integer (row.item (8))
+						l_total_contracts := l_total_pre + l_total_post + l_total_inv
+					end
+				end
+
+				-- Statistical measures for classes
+				if attached db.query ("SELECT MIN(class_count), MAX(class_count), AVG(class_count) FROM compiled_stats") as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_min_cls := safe_integer (row.item (1))
+						l_max_cls := safe_integer (row.item (2))
+						l_avg_cls := safe_real (row.item (3))
+					end
+				end
+				if attached db.query ("SELECT class_count FROM compiled_stats ORDER BY class_count LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_med_cls := safe_integer (row.item (1))
+					end
+				end
+
+				-- Statistical measures for features
+				if attached db.query ("SELECT MIN(feature_count), MAX(feature_count), AVG(feature_count) FROM compiled_stats") as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_min_feat := safe_integer (row.item (1))
+						l_max_feat := safe_integer (row.item (2))
+						l_avg_feat := safe_real (row.item (3))
+					end
+				end
+				if attached db.query ("SELECT feature_count FROM compiled_stats ORDER BY feature_count LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_med_feat := safe_integer (row.item (1))
+					end
+				end
+
+				-- Statistical measures for LOC
+				if attached db.query ("SELECT MIN(lines_of_code), MAX(lines_of_code), AVG(lines_of_code) FROM compiled_stats") as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_min_loc := safe_integer (row.item (1))
+						l_max_loc := safe_integer (row.item (2))
+						l_avg_loc := safe_real (row.item (3))
+					end
+				end
+				if attached db.query ("SELECT lines_of_code FROM compiled_stats ORDER BY lines_of_code LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
+					if not res.rows.is_empty and then attached res.rows.first as row then
+						l_med_loc := safe_integer (row.item (1))
+					end
+				end
+
+				-- Derived metrics
+				if l_total_loc > 0 then
+					l_density := (l_total_contracts / l_total_loc) * 100
+				end
+				if l_total_features > 0 then
+					l_contracts_per_feat := l_total_contracts / l_total_features
+				end
+
+				-- Output
+				Result.append ("Libraries Scanned: ")
+				Result.append (l_lib_count.out)
+				Result.append ("%N%N--- TOTALS ---%N")
+				Result.append ("  Classes:     ")
+				Result.append (l_total_classes.out)
+				Result.append ("%N  Features:    ")
+				Result.append (l_total_features.out)
+				Result.append ("%N  Attributes:  ")
+				Result.append (l_total_attrs.out)
+				Result.append ("%N  LOC:         ")
+				Result.append (format_number (l_total_loc))
+				Result.append ("%N%N--- DISTRIBUTION (per library) ---%N")
+				Result.append ("                   Min      Max      Avg   Median%N")
+				Result.append ("  Classes:     ")
+				Result.append (pad_left (l_min_cls.out, 6))
+				Result.append ("   ")
+				Result.append (pad_left (l_max_cls.out, 6))
+				Result.append ("   ")
+				Result.append (pad_left (format_decimal (l_avg_cls, 1), 6))
+				Result.append ("   ")
+				Result.append (pad_left (l_med_cls.out, 6))
+				Result.append ("%N  Features:   ")
+				Result.append (pad_left (l_min_feat.out, 6))
+				Result.append ("   ")
+				Result.append (pad_left (l_max_feat.out, 6))
+				Result.append ("   ")
+				Result.append (pad_left (format_decimal (l_avg_feat, 1), 6))
+				Result.append ("   ")
+				Result.append (pad_left (l_med_feat.out, 6))
+				Result.append ("%N  LOC:        ")
+				Result.append (pad_left (l_min_loc.out, 6))
+				Result.append ("   ")
+				Result.append (pad_left (l_max_loc.out, 6))
+				Result.append ("   ")
+				Result.append (pad_left (format_decimal (l_avg_loc, 1), 6))
+				Result.append ("   ")
+				Result.append (pad_left (l_med_loc.out, 6))
+
+				Result.append ("%N%N--- CONTRACT COVERAGE ---%N")
+				Result.append ("  Preconditions:   ")
+				Result.append (format_number (l_total_pre))
+				Result.append (" lines%N  Postconditions:  ")
+				Result.append (format_number (l_total_post))
+				Result.append (" lines%N  Invariants:      ")
+				Result.append (format_number (l_total_inv))
+				Result.append (" lines%N  TOTAL:           ")
+				Result.append (format_number (l_total_contracts))
+				Result.append (" lines%N%N--- QUALITY METRICS ---%N")
+				Result.append ("  Contract Density:     ")
+				Result.append (format_decimal (l_density, 1))
+				Result.append ("%% of LOC%N  Contracts/Feature:    ")
+				Result.append (format_decimal (l_contracts_per_feat, 2))
+
+				-- Top 10 by features
+				Result.append ("%N%N--- TOP 10 BY FEATURES ---%N")
+				if attached db.query ("SELECT library, feature_count, class_count, lines_of_code FROM compiled_stats ORDER BY feature_count DESC LIMIT 10") as res then
+					across res.rows as row loop
+						l_lib := safe_string (row.item (1))
+						l_feats := safe_integer (row.item (2))
+						l_classes := safe_integer (row.item (3))
+						l_loc := safe_integer (row.item (4))
+						Result.append ("  ")
+						Result.append (pad_right (l_lib, 22))
+						Result.append (pad_left (l_feats.out, 5))
+						Result.append (" feat  ")
+						Result.append (pad_left (l_classes.out, 3))
+						Result.append (" cls  ")
+						Result.append (pad_left (format_number (l_loc), 6))
+						Result.append (" LOC%N")
+					end
+				end
+
+				-- Top 10 by LOC
+				Result.append ("%N--- TOP 10 BY LOC ---%N")
+				if attached db.query ("SELECT library, lines_of_code, feature_count, class_count FROM compiled_stats ORDER BY lines_of_code DESC LIMIT 10") as res then
+					across res.rows as row loop
+						l_lib := safe_string (row.item (1))
+						l_loc := safe_integer (row.item (2))
+						l_feats := safe_integer (row.item (3))
+						l_classes := safe_integer (row.item (4))
+						Result.append ("  ")
+						Result.append (pad_right (l_lib, 22))
+						Result.append (pad_left (format_number (l_loc), 6))
+						Result.append (" LOC  ")
+						Result.append (pad_left (l_feats.out, 5))
+						Result.append (" feat  ")
+						Result.append (pad_left (l_classes.out, 3))
+						Result.append (" cls%N")
+					end
+				end
+
+				-- Top 10 by contract density
+				Result.append ("%N--- TOP 10 BY CONTRACT DENSITY (min 100 LOC) ---%N")
+				if attached db.query ("SELECT library, " +
+					"CAST((precondition_count + postcondition_count + invariant_count) AS REAL) * 100.0 / lines_of_code as density, " +
+					"(precondition_count + postcondition_count + invariant_count) as contracts, lines_of_code " +
+					"FROM compiled_stats WHERE lines_of_code > 100 ORDER BY density DESC LIMIT 10") as res then
+					across res.rows as row loop
+						l_lib := safe_string (row.item (1))
+						l_density := safe_real (row.item (2))
+						l_int_val := safe_integer (row.item (3))
+						l_loc := safe_integer (row.item (4))
+						Result.append ("  ")
+						Result.append (pad_right (l_lib, 22))
+						Result.append (pad_left (format_decimal (l_density, 1), 5))
+						Result.append ("%%  (")
+						Result.append (l_int_val.out)
+						Result.append (" / ")
+						Result.append (format_number (l_loc))
+						Result.append (")%N")
+					end
+				end
+			end
+
+			Result.append ("%N=== END CENSUS ===%N")
+		end
+
+	format_number (a_num: INTEGER): STRING_32
+			-- Format number with comma separators
+		do
+			if a_num >= 1000 then
+				Result := (a_num // 1000).out + "," + pad_left ((a_num \\ 1000).out, 3).twin
+				Result.replace_substring_all (" ", "0")
+			else
+				Result := a_num.out
+			end
+		end
+
+	format_decimal (a_num: REAL_64; a_places: INTEGER): STRING_32
+			-- Format real with specified decimal places
+		local
+			l_mult: REAL_64
+			l_int: INTEGER_64
+		do
+			l_mult := (10 ^ a_places).truncated_to_real
+			l_int := (a_num * l_mult + 0.5).truncated_to_integer_64
+			Result := (l_int // l_mult.truncated_to_integer_64).out
+			Result.append (".")
+			Result.append (pad_left ((l_int \\ l_mult.truncated_to_integer_64).out, a_places))
+			Result.replace_substring_all (" ", "0")
+		end
+
+	pad_left (a_str: STRING_32; a_width: INTEGER): STRING_32
+			-- Pad string on left to width
+		do
+			create Result.make (a_width)
+			from until Result.count + a_str.count >= a_width loop
+				Result.append_character (' ')
+			end
+			Result.append (a_str)
+		end
+
+	pad_right (a_str: STRING_32; a_width: INTEGER): STRING_32
+			-- Pad string on right to width
+		do
+			Result := a_str.twin
+			from until Result.count >= a_width loop
+				Result.append_character (' ')
+			end
+		end
+
+	safe_real (a_val: detachable ANY): REAL_64
+			-- Safely convert value to real
+		do
+			if attached {REAL_64} a_val as r then
+				Result := r
+			elseif attached {INTEGER_64} a_val as i64 then
+				Result := i64.to_double
+			elseif attached {INTEGER} a_val as i then
+				Result := i.to_double
+			elseif attached a_val as v then
+				Result := v.out.to_double
+			end
+		end
+
 feature -- Proactive Guidance (Check Command)
 
 	check_guidance: STRING_32
@@ -1713,6 +2039,26 @@ feature {NONE} -- Implementation
 				db.execute ("CREATE INDEX IF NOT EXISTS idx_class_clients_client ON class_clients(client_class_id)")
 				db.execute ("CREATE INDEX IF NOT EXISTS idx_class_clients_supplier ON class_clients(supplier_name)")
 
+				-- Compiled stats from EIFGENs metadata
+				db.execute ("[
+					CREATE TABLE IF NOT EXISTS compiled_stats (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						library TEXT NOT NULL,
+						target TEXT NOT NULL,
+						class_count INTEGER DEFAULT 0,
+						feature_count INTEGER DEFAULT 0,
+						attribute_count INTEGER DEFAULT 0,
+						lines_of_code INTEGER DEFAULT 0,
+						precondition_count INTEGER DEFAULT 0,
+						postcondition_count INTEGER DEFAULT 0,
+						invariant_count INTEGER DEFAULT 0,
+						scanned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+						eifgens_path TEXT,
+						UNIQUE(library, target)
+					)
+				]")
+				db.execute ("CREATE INDEX IF NOT EXISTS idx_compiled_stats_library ON compiled_stats(library)")
+
 				-- Phase 3: File timestamps for incremental scanning
 				db.execute ("ALTER TABLE classes ADD COLUMN file_modified INTEGER DEFAULT 0")
 				-- Note: ALTER TABLE ADD COLUMN is safe - it does nothing if column exists
@@ -1818,6 +2164,30 @@ feature {NONE} -- Implementation
 			end
 		ensure
 			has_error: has_error
+		end
+
+	safe_string (a_value: detachable ANY): STRING_32
+			-- Convert value to string, empty if Void.
+		do
+			if attached {READABLE_STRING_GENERAL} a_value as s then
+				Result := s.to_string_32
+			else
+				create Result.make_empty
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	safe_integer (a_value: detachable ANY): INTEGER
+			-- Convert value to integer, 0 if Void or not numeric.
+		do
+			if attached {INTEGER_64} a_value as i then
+				Result := i.to_integer_32
+			elseif attached {INTEGER} a_value as i then
+				Result := i
+			else
+				Result := 0
+			end
 		end
 
 feature {NONE} -- Constants
