@@ -4,7 +4,7 @@ note
 	revision: "$Revision$"
 
 class
-	APPLICATION
+	TEST_APP
 
 create
 	make
@@ -14,7 +14,7 @@ feature {NONE} -- Initialization
 	make
 			-- Run all tests.
 		local
-			tests: TEST_SIMPLE_ORACLE
+			tests: LIB_TESTS
 			passed, failed: INTEGER
 		do
 			create tests

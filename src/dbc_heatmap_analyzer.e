@@ -130,7 +130,7 @@ feature -- Report Generation
 		do
 			l_html := build_html_report
 			create l_file.make (a_output_path)
-			l_file.write_text (l_html).do_nothing
+			l_file.save (l_html).do_nothing
 		end
 
 	generate_json: STRING
@@ -265,7 +265,7 @@ feature {NONE} -- Implementation
 			if not l_retried then
 				create l_file.make (a_path)
 				if l_file.exists then
-					l_content := l_file.read_text.to_string_8
+					l_content := l_file.load.to_string_8
 
 					-- Skip empty files
 					if l_content.count > 10 then

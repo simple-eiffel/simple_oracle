@@ -5,7 +5,7 @@ note
 	testing: "type/manual"
 
 class
-	TEST_SIMPLE_ORACLE
+	LIB_TESTS
 
 inherit
 	EQA_TEST_SET

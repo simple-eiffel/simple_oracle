@@ -115,7 +115,7 @@ feature -- Library Registry
 		do
 			clear_error
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT OR REPLACE INTO libraries (name, path, last_seen) VALUES (?, ?, datetime('now'))",
 					<<a_name.to_string_32, a_path.to_string_32>>
 				)
@@ -133,7 +133,7 @@ feature -- Library Registry
 			is_ready: is_ready
 		do
 			if attached disk_db as db then
-				if attached db.query ("SELECT COUNT(*) FROM libraries") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM libraries") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then
 							Result := cnt.to_integer_32
@@ -150,7 +150,7 @@ feature -- Library Registry
 		do
 			create Result.make (50)
 			if attached disk_db as db then
-				if attached db.query ("SELECT name, path FROM libraries ORDER BY name") as res then
+				if attached db.fetch ("SELECT name, path FROM libraries ORDER BY name") as res then
 					across res.rows as row loop
 						if attached {STRING_32} row.item (1) as n and then
 						   attached {STRING_32} row.item (2) as p then
@@ -180,7 +180,7 @@ feature -- Event Logging
 				create l_lib.make_empty
 			end
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT INTO events (event_type, library, details, timestamp) VALUES (?, ?, ?, datetime('now'))",
 					<<a_type.to_string_32, l_lib, a_details.to_string_32>>
 				)
@@ -203,7 +203,7 @@ feature -- Event Logging
 			create Result.make (100)
 			if attached disk_db as db then
 				-- Simplified: get last 50 events, ignore time filter for MVP
-				if attached db.query (
+				if attached db.fetch (
 					"SELECT event_type, library, details, timestamp FROM events ORDER BY id DESC LIMIT 50") as res
 				then
 					across res.rows as row loop
@@ -278,7 +278,7 @@ feature -- Natural Language Query
 			create Result.make (2000)
 			if attached disk_db as db then
 				-- FTS5 query with MATCH and ranking by relevance
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT category, title, snippet(knowledge, 2, '>>>', '<<<', '...', 50) as snippet, rank FROM knowledge WHERE knowledge MATCH ? ORDER BY rank LIMIT 10",
 					<<a_terms.to_string_32>>) as res
 				then
@@ -339,7 +339,7 @@ feature -- Natural Language Query
 
 			if attached disk_db as db then
 				-- Search classes
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT l.name, c.name, c.description FROM classes c " +
 					"JOIN libraries l ON c.library_id = l.id " +
 					"WHERE c.name LIKE ? OR c.description LIKE ? " +
@@ -372,7 +372,7 @@ feature -- Natural Language Query
 				end
 
 				-- Search features with DBC
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT l.name, c.name, f.name, f.signature, f.description, f.preconditions, f.postconditions " +
 					"FROM features f " +
 					"JOIN classes c ON f.class_id = c.id " +
@@ -452,7 +452,7 @@ feature -- Knowledge Base
 		do
 			clear_error
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT INTO knowledge (category, title, content) VALUES (?, ?, ?)",
 					<<a_category.to_string_32, a_title.to_string_32, a_content.to_string_32>>
 				)
@@ -549,7 +549,7 @@ feature -- Knowledge Base
 			is_ready: is_ready
 		do
 			if attached disk_db as db then
-				if attached db.query ("SELECT COUNT(*) FROM knowledge") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM knowledge") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then
 							Result := cnt.to_integer_32
@@ -565,7 +565,7 @@ feature -- Knowledge Base
 			is_ready: is_ready
 		do
 			if attached disk_db as db then
-				db.execute ("DELETE FROM knowledge")
+				db.run_sql ("DELETE FROM knowledge")
 			end
 		end
 
@@ -727,7 +727,7 @@ feature -- Compilation Logging
 		do
 			clear_error
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT INTO compilations (library, target, success, duration) VALUES (?, ?, ?, ?)",
 					<<a_library.to_string_32, a_target.to_string_32, a_success, a_duration>>
 				)
@@ -755,7 +755,7 @@ feature -- Compilation Logging
 		do
 			create Result.make (a_count)
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT library, target, success, duration, timestamp FROM compilations ORDER BY id DESC LIMIT ?",
 					<<a_count>>) as res
 				then
@@ -800,7 +800,7 @@ feature -- Compilation Logging
 			l_avg: REAL_64
 		do
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT COUNT(*), SUM(CASE WHEN success THEN 1 ELSE 0 END), SUM(CASE WHEN NOT success THEN 1 ELSE 0 END), AVG(duration) FROM compilations WHERE library = ?",
 					<<a_library.to_string_32>>) as res
 				then
@@ -834,7 +834,7 @@ feature -- Test Run Tracking
 				create l_output.make_empty
 			end
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT INTO test_runs (library, target, total, passed, failed, duration, output) VALUES (?, ?, ?, ?, ?, ?, ?)",
 					<<a_library.to_string_32, a_target.to_string_32, a_total, a_passed, a_failed, a_duration, l_output>>
 				)
@@ -858,7 +858,7 @@ feature -- Test Run Tracking
 		do
 			create Result.make (a_count)
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT library, target, total, passed, failed, duration, timestamp FROM test_runs ORDER BY id DESC LIMIT ?",
 					<<a_count>>) as res
 				then
@@ -885,7 +885,7 @@ feature -- Test Run Tracking
 			l_rate: REAL_64
 		do
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT COUNT(*), SUM(total), SUM(passed), SUM(failed) FROM test_runs WHERE library = ?",
 					<<a_library.to_string_32>>) as res
 				then
@@ -916,7 +916,7 @@ feature -- Test Run Tracking
 			create Result.make (10)
 			if attached disk_db as db then
 				-- Subquery to get the most recent test run per library, then filter to those with failures
-				if attached db.query ("[
+				if attached db.fetch ("[
 					SELECT library, failed, timestamp FROM test_runs
 					WHERE id IN (SELECT MAX(id) FROM test_runs GROUP BY library)
 					AND failed > 0
@@ -944,7 +944,7 @@ feature -- Git Tracking
 		do
 			clear_error
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT INTO git_commits (library, commit_hash, author, message, files_changed, insertions, deletions) VALUES (?, ?, ?, ?, ?, ?, ?)",
 					<<a_library.to_string_32, a_hash.to_string_32, a_author.to_string_32, a_message.to_string_32, a_files_changed, a_insertions, a_deletions>>
 				)
@@ -967,7 +967,7 @@ feature -- Git Tracking
 		do
 			create Result.make (a_count)
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT library, commit_hash, author, message, files_changed, timestamp FROM git_commits ORDER BY id DESC LIMIT ?",
 					<<a_count>>) as res
 				then
@@ -996,7 +996,7 @@ feature -- Git Tracking
 		do
 			create Result.make (a_count)
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT commit_hash, author, message, files_changed, insertions, deletions, timestamp FROM git_commits WHERE library = ? ORDER BY id DESC LIMIT ?",
 					<<a_library.to_string_32, a_count>>) as res
 				then
@@ -1022,7 +1022,7 @@ feature -- Git Tracking
 			l_commits, l_libs, l_ins, l_del: INTEGER
 		do
 			if attached disk_db as db then
-				if attached db.query ("SELECT COUNT(*), COUNT(DISTINCT library), SUM(insertions), SUM(deletions) FROM git_commits") as res then
+				if attached db.fetch ("SELECT COUNT(*), COUNT(DISTINCT library), SUM(insertions), SUM(deletions) FROM git_commits") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as c then l_commits := c.to_integer_32 end
 						if attached {INTEGER_64} row.item (2) as l then l_libs := l.to_integer_32 end
@@ -1052,7 +1052,7 @@ feature -- Session Handoff
 			if attached a_blockers as b then l_blockers := b.to_string_32 else create l_blockers.make_empty end
 
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT INTO session_handoff (current_task, work_in_progress, next_steps, blockers) VALUES (?, ?, ?, ?)",
 					<<l_task, l_wip, l_next, l_blockers>>
 				)
@@ -1070,7 +1070,7 @@ feature -- Session Handoff
 			l_ts, l_task, l_wip, l_next, l_blockers: STRING_32
 		do
 			if attached disk_db as db then
-				if attached db.query ("SELECT session_end, current_task, work_in_progress, next_steps, blockers FROM session_handoff ORDER BY id DESC LIMIT 1") as res then
+				if attached db.fetch ("SELECT session_end, current_task, work_in_progress, next_steps, blockers FROM session_handoff ORDER BY id DESC LIMIT 1") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						-- Extract each field, converting to STRING_32
 						if attached {READABLE_STRING_GENERAL} row.item (1) as ts then l_ts := ts.to_string_32 else create l_ts.make_empty end
@@ -1160,27 +1160,27 @@ feature -- Ecosystem Statistics (Bean-Counter Metrics)
 			if attached disk_db as db then
 				-- CODEBASE SIZE
 				Result.append ("--- CODEBASE SIZE ---%N")
-				if attached db.query ("SELECT COUNT(*) FROM libraries WHERE name LIKE 'simple_%%'") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM libraries WHERE name LIKE 'simple_%%'") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_lib_count := cnt.to_integer_32 end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*) FROM classes") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM classes") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_class_count := cnt.to_integer_32 end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*) FROM features") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM features") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_feat_count := cnt.to_integer_32 end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*) FROM class_parents") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM class_parents") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_parent_count := cnt.to_integer_32 end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*) FROM class_clients") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM class_clients") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_client_count := cnt.to_integer_32 end
 					end
@@ -1199,20 +1199,20 @@ feature -- Ecosystem Statistics (Bean-Counter Metrics)
 
 				-- DEVELOPMENT ACTIVITY
 				Result.append ("--- DEVELOPMENT ACTIVITY ---%N")
-				if attached db.query ("SELECT COUNT(*), SUM(CASE WHEN success THEN 1 ELSE 0 END) FROM compilations WHERE timestamp >= " + l_time_filter) as res then
+				if attached db.fetch ("SELECT COUNT(*), SUM(CASE WHEN success THEN 1 ELSE 0 END) FROM compilations WHERE timestamp >= " + l_time_filter) as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_compile_count := cnt.to_integer_32 end
 						if attached {INTEGER_64} row.item (2) as suc then l_compile_success := suc.to_integer_32 end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*), SUM(passed), SUM(failed) FROM test_runs WHERE timestamp >= " + l_time_filter) as res then
+				if attached db.fetch ("SELECT COUNT(*), SUM(passed), SUM(failed) FROM test_runs WHERE timestamp >= " + l_time_filter) as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_test_count := cnt.to_integer_32 end
 						if attached {INTEGER_64} row.item (2) as p then l_test_passed := p.to_integer_32 end
 						if attached {INTEGER_64} row.item (3) as f then l_test_failed := f.to_integer_32 end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*), COALESCE(SUM(insertions),0), COALESCE(SUM(deletions),0) FROM git_commits WHERE timestamp >= " + l_time_filter) as res then
+				if attached db.fetch ("SELECT COUNT(*), COALESCE(SUM(insertions),0), COALESCE(SUM(deletions),0) FROM git_commits WHERE timestamp >= " + l_time_filter) as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then l_commit_count := cnt.to_integer_32 end
 						if attached {INTEGER_64} row.item (2) as ins then l_lines_added := ins.to_integer_32 end
@@ -1252,7 +1252,7 @@ feature -- Ecosystem Statistics (Bean-Counter Metrics)
 
 				-- DBC QUALITY METRICS
 				Result.append ("--- DESIGN BY CONTRACT (Quality Indicators) ---%N")
-				if attached db.query ("SELECT COUNT(*) FROM features WHERE preconditions != '' AND preconditions IS NOT NULL") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM features WHERE preconditions != '' AND preconditions IS NOT NULL") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then
 							Result.append ("Features with preconditions:  ")
@@ -1266,7 +1266,7 @@ feature -- Ecosystem Statistics (Bean-Counter Metrics)
 						end
 					end
 				end
-				if attached db.query ("SELECT COUNT(*) FROM features WHERE postconditions != '' AND postconditions IS NOT NULL") as res then
+				if attached db.fetch ("SELECT COUNT(*) FROM features WHERE postconditions != '' AND postconditions IS NOT NULL") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						if attached {INTEGER_64} row.item (1) as cnt then
 							Result.append ("Features with postconditions: ")
@@ -1311,7 +1311,7 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 		do
 			clear_error
 			if attached disk_db as db then
-				db.execute_with_args (
+				db.run_sql_with (
 					"INSERT OR REPLACE INTO compiled_stats (library, target, class_count, feature_count, " +
 					"attribute_count, lines_of_code, precondition_count, postcondition_count, invariant_count, " +
 					"scanned_at, eifgens_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)",
@@ -1336,7 +1336,7 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 			library_not_empty: not a_library.is_empty
 		do
 			if attached disk_db as db then
-				if attached db.query_with_args (
+				if attached db.fetch_with (
 					"SELECT library, target, class_count, feature_count, attribute_count, lines_of_code, " +
 					"precondition_count, postcondition_count, invariant_count, scanned_at, eifgens_path " +
 					"FROM compiled_stats WHERE library = ? ORDER BY scanned_at DESC LIMIT 1",
@@ -1381,7 +1381,7 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 
 			if attached disk_db as db then
 				-- Aggregate totals
-				if attached db.query ("SELECT COUNT(DISTINCT library), SUM(class_count), SUM(feature_count), " +
+				if attached db.fetch ("SELECT COUNT(DISTINCT library), SUM(class_count), SUM(feature_count), " +
 					"SUM(attribute_count), SUM(lines_of_code), SUM(precondition_count), " +
 					"SUM(postcondition_count), SUM(invariant_count) FROM compiled_stats") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
@@ -1398,42 +1398,42 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 				end
 
 				-- Statistical measures for classes
-				if attached db.query ("SELECT MIN(class_count), MAX(class_count), AVG(class_count) FROM compiled_stats") as res then
+				if attached db.fetch ("SELECT MIN(class_count), MAX(class_count), AVG(class_count) FROM compiled_stats") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						l_min_cls := safe_integer (row.item (1))
 						l_max_cls := safe_integer (row.item (2))
 						l_avg_cls := safe_real (row.item (3))
 					end
 				end
-				if attached db.query ("SELECT class_count FROM compiled_stats ORDER BY class_count LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
+				if attached db.fetch ("SELECT class_count FROM compiled_stats ORDER BY class_count LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						l_med_cls := safe_integer (row.item (1))
 					end
 				end
 
 				-- Statistical measures for features
-				if attached db.query ("SELECT MIN(feature_count), MAX(feature_count), AVG(feature_count) FROM compiled_stats") as res then
+				if attached db.fetch ("SELECT MIN(feature_count), MAX(feature_count), AVG(feature_count) FROM compiled_stats") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						l_min_feat := safe_integer (row.item (1))
 						l_max_feat := safe_integer (row.item (2))
 						l_avg_feat := safe_real (row.item (3))
 					end
 				end
-				if attached db.query ("SELECT feature_count FROM compiled_stats ORDER BY feature_count LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
+				if attached db.fetch ("SELECT feature_count FROM compiled_stats ORDER BY feature_count LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						l_med_feat := safe_integer (row.item (1))
 					end
 				end
 
 				-- Statistical measures for LOC
-				if attached db.query ("SELECT MIN(lines_of_code), MAX(lines_of_code), AVG(lines_of_code) FROM compiled_stats") as res then
+				if attached db.fetch ("SELECT MIN(lines_of_code), MAX(lines_of_code), AVG(lines_of_code) FROM compiled_stats") as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						l_min_loc := safe_integer (row.item (1))
 						l_max_loc := safe_integer (row.item (2))
 						l_avg_loc := safe_real (row.item (3))
 					end
 				end
-				if attached db.query ("SELECT lines_of_code FROM compiled_stats ORDER BY lines_of_code LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
+				if attached db.fetch ("SELECT lines_of_code FROM compiled_stats ORDER BY lines_of_code LIMIT 1 OFFSET " + (l_lib_count // 2).out) as res then
 					if not res.rows.is_empty and then attached res.rows.first as row then
 						l_med_loc := safe_integer (row.item (1))
 					end
@@ -1503,7 +1503,7 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 
 				-- Top 10 by features
 				Result.append ("%N%N--- TOP 10 BY FEATURES ---%N")
-				if attached db.query ("SELECT library, feature_count, class_count, lines_of_code FROM compiled_stats ORDER BY feature_count DESC LIMIT 10") as res then
+				if attached db.fetch ("SELECT library, feature_count, class_count, lines_of_code FROM compiled_stats ORDER BY feature_count DESC LIMIT 10") as res then
 					across res.rows as row loop
 						l_lib := safe_string (row.item (1))
 						l_feats := safe_integer (row.item (2))
@@ -1522,7 +1522,7 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 
 				-- Top 10 by LOC
 				Result.append ("%N--- TOP 10 BY LOC ---%N")
-				if attached db.query ("SELECT library, lines_of_code, feature_count, class_count FROM compiled_stats ORDER BY lines_of_code DESC LIMIT 10") as res then
+				if attached db.fetch ("SELECT library, lines_of_code, feature_count, class_count FROM compiled_stats ORDER BY lines_of_code DESC LIMIT 10") as res then
 					across res.rows as row loop
 						l_lib := safe_string (row.item (1))
 						l_loc := safe_integer (row.item (2))
@@ -1541,7 +1541,7 @@ feature -- Compiled Statistics (EIFGENs Metadata)
 
 				-- Top 10 by contract density
 				Result.append ("%N--- TOP 10 BY CONTRACT DENSITY (min 100 LOC) ---%N")
-				if attached db.query ("SELECT library, " +
+				if attached db.fetch ("SELECT library, " +
 					"CAST((precondition_count + postcondition_count + invariant_count) AS REAL) * 100.0 / lines_of_code as density, " +
 					"(precondition_count + postcondition_count + invariant_count) as contracts, lines_of_code " +
 					"FROM compiled_stats WHERE lines_of_code > 100 ORDER BY density DESC LIMIT 10") as res then
@@ -1661,7 +1661,7 @@ feature -- Proactive Guidance (Check Command)
 		do
 			create Result.make (1000)
 			if attached disk_db as db then
-				if attached db.query ("SELECT title, content FROM knowledge WHERE category = 'rule' ORDER BY rowid DESC LIMIT 10") as res then
+				if attached db.fetch ("SELECT title, content FROM knowledge WHERE category = 'rule' ORDER BY rowid DESC LIMIT 10") as res then
 					if not res.rows.is_empty then
 						Result.append ("--- RULES (Must Follow) ---%N")
 						across res.rows as row loop
@@ -1700,7 +1700,7 @@ feature -- Proactive Guidance (Check Command)
 		do
 			create Result.make (1000)
 			if attached disk_db as db then
-				if attached db.query ("SELECT title, content FROM knowledge WHERE category = 'gotcha' ORDER BY rowid DESC LIMIT 5") as res then
+				if attached db.fetch ("SELECT title, content FROM knowledge WHERE category = 'gotcha' ORDER BY rowid DESC LIMIT 5") as res then
 					if not res.rows.is_empty then
 						Result.append ("--- GOTCHAS (Common Mistakes) ---%N")
 						across res.rows as row loop
@@ -1739,7 +1739,7 @@ feature -- Proactive Guidance (Check Command)
 		do
 			create Result.make (1000)
 			if attached disk_db as db then
-				if attached db.query ("SELECT library, details, timestamp FROM events WHERE event_type = 'error' AND timestamp > datetime('now', '-24 hours') ORDER BY timestamp DESC LIMIT 5") as res then
+				if attached db.fetch ("SELECT library, details, timestamp FROM events WHERE event_type = 'error' AND timestamp > datetime('now', '-24 hours') ORDER BY timestamp DESC LIMIT 5") as res then
 					if not res.rows.is_empty then
 						Result.append ("--- RECENT ERRORS (24h) ---%N")
 						across res.rows as row loop
@@ -1814,7 +1814,7 @@ feature -- Persistence
 		do
 			-- Memory is write-through, so this is mainly for safety
 			if attached disk_db as db then
-				db.execute ("PRAGMA wal_checkpoint(TRUNCATE)")
+				db.run_sql ("PRAGMA wal_checkpoint(TRUNCATE)")
 			end
 		end
 
@@ -1852,7 +1852,7 @@ feature {NONE} -- Implementation
 		do
 			if attached disk_db as db then
 				-- Libraries table
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS libraries (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						name TEXT UNIQUE NOT NULL,
@@ -1869,7 +1869,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Events table
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS events (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						event_type TEXT NOT NULL,
@@ -1880,7 +1880,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Classes table
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS classes (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						library_id INTEGER REFERENCES libraries(id),
@@ -1893,7 +1893,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Knowledge base with FTS5 full-text search
-				db.execute ("[
+				db.run_sql ("[
 					CREATE VIRTUAL TABLE IF NOT EXISTS knowledge USING fts5(
 						category,
 						title,
@@ -1903,7 +1903,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Patterns table
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS patterns (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						name TEXT NOT NULL,
@@ -1915,7 +1915,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Tasks/work items
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS tasks (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						title TEXT NOT NULL,
@@ -1929,7 +1929,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Session handoff for context continuity across sessions
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS session_handoff (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						session_end TEXT DEFAULT (datetime('now')),
@@ -1941,7 +1941,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Compilations table (build history)
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS compilations (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						library TEXT NOT NULL,
@@ -1954,7 +1954,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Test runs table (test history)
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS test_runs (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						library TEXT NOT NULL,
@@ -1969,7 +1969,7 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Git commits table (version control history)
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS git_commits (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						library TEXT NOT NULL,
@@ -1984,18 +1984,18 @@ feature {NONE} -- Implementation
 				]")
 
 				-- Indexes for performance
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_compilations_library ON compilations(library)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_compilations_timestamp ON compilations(timestamp)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_events_library ON events(library)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_classes_library ON classes(library_id)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_test_runs_library ON test_runs(library)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_test_runs_timestamp ON test_runs(timestamp)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_git_commits_library ON git_commits(library)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_git_commits_timestamp ON git_commits(timestamp)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_compilations_library ON compilations(library)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_compilations_timestamp ON compilations(timestamp)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_events_library ON events(library)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_classes_library ON classes(library_id)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_test_runs_library ON test_runs(library)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_test_runs_timestamp ON test_runs(timestamp)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_git_commits_library ON git_commits(library)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_git_commits_timestamp ON git_commits(timestamp)")
 
 				-- Features table for ecosystem scanning (API documentation)
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS features (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						class_id INTEGER REFERENCES classes(id),
@@ -2007,11 +2007,11 @@ feature {NONE} -- Implementation
 						description TEXT
 					)
 				]")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_features_class ON features(class_id)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_features_name ON features(name)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_features_class ON features(class_id)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_features_name ON features(name)")
 
 				-- Phase 3: Class relationships (inheritance hierarchy)
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS class_parents (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						class_id INTEGER NOT NULL REFERENCES classes(id),
@@ -2022,11 +2022,11 @@ feature {NONE} -- Implementation
 						UNIQUE(class_id, parent_name)
 					)
 				]")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_class_parents_class ON class_parents(class_id)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_class_parents_parent ON class_parents(parent_name)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_class_parents_class ON class_parents(class_id)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_class_parents_parent ON class_parents(parent_name)")
 
 				-- Phase 3: Client/supplier relationships (who uses whom)
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS class_clients (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						client_class_id INTEGER NOT NULL REFERENCES classes(id),
@@ -2036,11 +2036,11 @@ feature {NONE} -- Implementation
 						UNIQUE(client_class_id, supplier_name)
 					)
 				]")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_class_clients_client ON class_clients(client_class_id)")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_class_clients_supplier ON class_clients(supplier_name)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_class_clients_client ON class_clients(client_class_id)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_class_clients_supplier ON class_clients(supplier_name)")
 
 				-- Compiled stats from EIFGENs metadata
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS compiled_stats (
 						id INTEGER PRIMARY KEY AUTOINCREMENT,
 						library TEXT NOT NULL,
@@ -2057,16 +2057,16 @@ feature {NONE} -- Implementation
 						UNIQUE(library, target)
 					)
 				]")
-				db.execute ("CREATE INDEX IF NOT EXISTS idx_compiled_stats_library ON compiled_stats(library)")
+				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_compiled_stats_library ON compiled_stats(library)")
 
 				-- Phase 3: File timestamps for incremental scanning
-				db.execute ("ALTER TABLE classes ADD COLUMN file_modified INTEGER DEFAULT 0")
+				db.run_sql ("ALTER TABLE classes ADD COLUMN file_modified INTEGER DEFAULT 0")
 				-- Note: ALTER TABLE ADD COLUMN is safe - it does nothing if column exists
 			end
 
 			-- Create same schema in memory DB
 			if attached memory_db as db then
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS libraries (
 						id INTEGER PRIMARY KEY,
 						name TEXT UNIQUE NOT NULL,
@@ -2082,7 +2082,7 @@ feature {NONE} -- Implementation
 					)
 				]")
 
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS events (
 						id INTEGER PRIMARY KEY,
 						event_type TEXT NOT NULL,
@@ -2092,7 +2092,7 @@ feature {NONE} -- Implementation
 					)
 				]")
 
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS classes (
 						id INTEGER PRIMARY KEY,
 						library_id INTEGER,
@@ -2107,7 +2107,7 @@ feature {NONE} -- Implementation
 				-- FTS5 knowledge table is disk-only, no memory copy needed
 				-- (FTS5 virtual tables can't be synced like regular tables)
 
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS patterns (
 						id INTEGER PRIMARY KEY,
 						name TEXT NOT NULL,
@@ -2118,7 +2118,7 @@ feature {NONE} -- Implementation
 					)
 				]")
 
-				db.execute ("[
+				db.run_sql ("[
 					CREATE TABLE IF NOT EXISTS tasks (
 						id INTEGER PRIMARY KEY,
 						title TEXT NOT NULL,

@@ -862,42 +862,42 @@ feature {NONE} -- Storage
 			io.put_string ("  [store] Starting database storage...%N")
 			if attached oracle.disk_db as db then
 				io.put_string ("  [store] Got disk_db, beginning transaction...%N")
-				db.execute ("BEGIN TRANSACTION")
+				db.run_sql ("BEGIN TRANSACTION")
 
 				io.put_string ("  [store] Storing " + libraries_found.count.out + " libraries...%N")
 				-- Store libraries (INSERT OR REPLACE handles updates)
 				across libraries_found as lib loop
-					db.execute_with_args (
+					db.run_sql_with (
 						"INSERT OR REPLACE INTO libraries (name, path, description, last_seen) VALUES (?, ?, ?, datetime('now'))",
 						<<lib.name, lib.path, lib.description>>
 					)
 				end
 
 				-- Clear all old relationship data (Phase 3)
-				db.execute (
+				db.run_sql (
 					"DELETE FROM class_parents WHERE class_id IN " +
 					"(SELECT c.id FROM classes c JOIN libraries l ON c.library_id = l.id WHERE l.name LIKE 'simple_%%')"
 				)
-				db.execute (
+				db.run_sql (
 					"DELETE FROM class_clients WHERE client_class_id IN " +
 					"(SELECT c.id FROM classes c JOIN libraries l ON c.library_id = l.id WHERE l.name LIKE 'simple_%%')"
 				)
 
 				-- Clear all old feature data
-				db.execute (
+				db.run_sql (
 					"DELETE FROM features WHERE class_id IN " +
 					"(SELECT c.id FROM classes c JOIN libraries l ON c.library_id = l.id WHERE l.name LIKE 'simple_%%')"
 				)
 
 				-- Clear all old class data
-				db.execute (
+				db.run_sql (
 					"DELETE FROM classes WHERE library_id IN (SELECT id FROM libraries WHERE name LIKE 'simple_%%')"
 				)
 
 				io.put_string ("  [store] Storing " + classes_found.count.out + " classes...%N")
 				-- Store classes with file timestamp
 				across classes_found as cls loop
-					db.execute_with_args (
+					db.run_sql_with (
 						"INSERT INTO classes (library_id, name, file_path, description, feature_count, file_modified) " +
 						"SELECT id, ?, ?, ?, ?, ? FROM libraries WHERE name = ?",
 						<<cls.name, cls.file_path, cls.description, cls.feature_count, cls.file_modified, cls.library>>
@@ -907,7 +907,7 @@ feature {NONE} -- Storage
 				io.put_string ("  [store] Storing " + features_found.count.out + " features...%N")
 				-- Store features with DBC contracts
 				across features_found as feat loop
-					db.execute_with_args (
+					db.run_sql_with (
 						"INSERT INTO features (class_id, name, signature, preconditions, postconditions, is_query, description) " +
 						"SELECT c.id, ?, ?, ?, ?, ?, ? FROM classes c JOIN libraries l ON c.library_id = l.id " +
 						"WHERE l.name = ? AND c.name = ?",
@@ -918,7 +918,7 @@ feature {NONE} -- Storage
 				io.put_string ("  [store] Storing " + parents_found.count.out + " inheritance relationships...%N")
 				-- Store inheritance relationships (Phase 3)
 				across parents_found as par loop
-					db.execute_with_args (
+					db.run_sql_with (
 						"INSERT OR IGNORE INTO class_parents (class_id, parent_name, rename_clause, redefine_clause) " +
 						"SELECT c.id, ?, ?, ? FROM classes c JOIN libraries l ON c.library_id = l.id " +
 						"WHERE l.name = ? AND c.name = ?",
@@ -929,7 +929,7 @@ feature {NONE} -- Storage
 				io.put_string ("  [store] Storing " + clients_found.count.out + " client relationships...%N")
 				-- Store client/supplier relationships (Phase 3)
 				across clients_found as cli loop
-					db.execute_with_args (
+					db.run_sql_with (
 						"INSERT OR IGNORE INTO class_clients (client_class_id, supplier_name, usage_type) " +
 						"SELECT c.id, ?, ? FROM classes c JOIN libraries l ON c.library_id = l.id " +
 						"WHERE l.name = ? AND c.name = ?",
@@ -938,7 +938,7 @@ feature {NONE} -- Storage
 				end
 
 				io.put_string ("  [store] Committing transaction...%N")
-				db.execute ("COMMIT")
+				db.run_sql ("COMMIT")
 				io.put_string ("  [store] Done.%N")
 			else
 				io.put_string ("  [store] ERROR: disk_db not attached%N")

@@ -100,7 +100,7 @@ feature {NONE} -- Implementation
 					if ic.ends_with (".e") then
 						l_full_path := a_path.to_string_32 + "/" + ic
 						create l_file.make (l_full_path)
-						l_content := l_file.read_text
+						l_content := l_file.load
 						if l_content /= Void and then not l_content.is_empty then
 							parse_file_content (l_content)
 						end

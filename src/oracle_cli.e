@@ -241,12 +241,12 @@ feature {NONE} -- Commands
 				-- Execute
 				create l_process.make
 				l_start := (create {TIME}.make_now).seconds
-				l_process.execute_in_directory (l_command, "D:\prod\" + l_library)
+				l_process.run_in_directory (l_command, "D:\prod\" + l_library)
 				l_duration := ((create {TIME}.make_now).seconds - l_start).to_double
 
 				-- Check success
-				l_success := l_process.was_successful and then l_process.last_exit_code = 0
-				if attached l_process.last_output as l_out then
+				l_success := l_process.succeeded and then l_process.exit_code = 0
+				if attached l_process.stdout as l_out then
 					if not l_out.has_substring ("C compilation completed") and not l_out.has_substring ("System Recompiled") then
 						l_success := False
 					end
@@ -261,7 +261,7 @@ feature {NONE} -- Commands
 					io.put_string ("=== COMPILE SUCCESS ===%N")
 				else
 					io.put_string ("=== COMPILE FAILED ===%N")
-					if attached l_process.last_output as l_out then
+					if attached l_process.stdout as l_out then
 						io.put_string (last_n_lines (l_out.to_string_8, 30))
 					end
 				end
@@ -501,11 +501,11 @@ feature {NONE} -- Commands
 				-- Execute
 				create l_process.make
 				l_start := (create {TIME}.make_now).seconds
-				l_process.execute (l_command)
+				l_process.run (l_command)
 				l_duration := ((create {TIME}.make_now).seconds - l_start).to_double
 
 				-- Parse output for test results
-				if attached l_process.last_output as l_out then
+				if attached l_process.stdout as l_out then
 					l_output := l_out.to_string_8
 					if attached parse_test_output (l_output) as l_results then
 						l_total := l_results.total
@@ -635,14 +635,14 @@ feature {NONE} -- Commands
 				l_command.append (" --shortstat")
 
 				create l_process.make
-				l_process.execute (l_command)
+				l_process.run (l_command)
 
 				-- Initialize to empty strings (not detachable)
 				create l_hash.make_empty
 				create l_author.make_empty
 				create l_message.make_empty
 
-				if attached l_process.last_output as l_git_out then
+				if attached l_process.stdout as l_git_out then
 					l_output := l_git_out.to_string_8
 					l_lines := l_output.split ('%N')
 					from l_lines.start until l_lines.after loop
