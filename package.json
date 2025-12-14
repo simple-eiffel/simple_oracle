@@ -1,0 +1,9 @@
+{
+  "name": "simple_oracle",
+  "version": "0.1.0",
+  "description": "Simple Oracle - Claude's External Memory and Development Intelligence Platform",
+  "author": "Larry Rix",
+  "license": "MIT",
+  "category": "tools",
+  "keywords": ["oracle", "knowledge", "context", "memory"]
+}
