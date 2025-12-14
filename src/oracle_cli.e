@@ -240,9 +240,9 @@ feature {NONE} -- Commands
 
 				-- Execute
 				create l_process.make
-				l_start := (create {TIME}.make_now).seconds
+				l_start := (create {SIMPLE_DATE_TIME}.make_now).to_timestamp.to_integer
 				l_process.run_in_directory (l_command, "D:\prod\" + l_library)
-				l_duration := ((create {TIME}.make_now).seconds - l_start).to_double
+				l_duration := ((create {SIMPLE_DATE_TIME}.make_now).to_timestamp.to_integer - l_start).to_double
 
 				-- Check success
 				l_success := l_process.succeeded and then l_process.exit_code = 0
@@ -500,9 +500,9 @@ feature {NONE} -- Commands
 
 				-- Execute
 				create l_process.make
-				l_start := (create {TIME}.make_now).seconds
+				l_start := (create {SIMPLE_DATE_TIME}.make_now).to_timestamp.to_integer
 				l_process.run (l_command)
-				l_duration := ((create {TIME}.make_now).seconds - l_start).to_double
+				l_duration := ((create {SIMPLE_DATE_TIME}.make_now).to_timestamp.to_integer - l_start).to_double
 
 				-- Parse output for test results
 				if attached l_process.stdout as l_out then

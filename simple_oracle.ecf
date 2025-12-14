@@ -27,7 +27,6 @@
 		<library name="simple_toml" location="$SIMPLE_TOML\simple_toml.ecf"/>
 		<library name="simple_ucf" location="$SIMPLE_UCF\simple_ucf.ecf"/>
 		<library name="simple_eiffel_parser" location="$SIMPLE_EIFFEL_PARSER\simple_eiffel_parser.ecf"/>
-		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>
 	<target name="simple_oracle_tests" extends="simple_oracle">
