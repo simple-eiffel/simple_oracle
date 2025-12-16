@@ -97,15 +97,8 @@ oracle-cli handoff "Implementing feature X" "Core done, tests pending" "Add edge
 ```bash
 cd /d/prod/simple_oracle
 
-# Set environment variables
-export SIMPLE_ORACLE=/d/prod/simple_oracle
-export SIMPLE_SQL=/d/prod/simple_sql
-export SIMPLE_JSON=/d/prod/simple_json
-export SIMPLE_FILE=/d/prod/simple_file
-export SIMPLE_PROCESS=/d/prod/simple_process
-export SIMPLE_DATETIME=/d/prod/simple_datetime
-export SIMPLE_LOGGER=/d/prod/simple_logger
-export SIMPLE_WATCHER=/d/prod/simple_watcher
+# Set the ecosystem environment variable (one-time setup for all simple_* libraries)
+export SIMPLE_EIFFEL=/d/prod
 
 # Compile CLI
 ec -batch -config simple_oracle.ecf -target simple_oracle_cli -c_compile
@@ -117,7 +110,7 @@ ec -batch -config simple_oracle.ecf -target simple_oracle_cli -c_compile
 ### ECF Integration
 
 ```xml
-<library name="simple_oracle" location="$SIMPLE_ORACLE/simple_oracle.ecf"/>
+<library name="simple_oracle" location="$SIMPLE_EIFFEL/simple_oracle/simple_oracle.ecf"/>
 ```
 
 ---
