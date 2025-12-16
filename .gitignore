@@ -37,7 +37,6 @@ exception_trace.log
 -/
 
 # Database files (local)
-*.db
 
 # Node modules (for vscode extensions)
 node_modules/
