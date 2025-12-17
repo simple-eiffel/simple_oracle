@@ -6,7 +6,7 @@ note
 		Uses simple text parsing (regex patterns) for speed.
 
 		Architecture:
-		- Scans /d/prod/simple_* directories
+		- Scans $SIMPLE_EIFFEL/simple_* directories
 		- Parses .e files for class declarations and features
 		- Stores results in oracle database
 		- Can run on SCOOP processor for background updates
@@ -14,7 +14,7 @@ note
 		Usage:
 			scanner: ORACLE_ECOSYSTEM_SCANNER
 			create scanner.make (oracle)
-			scanner.scan_ecosystem ("/d/prod")
+			scanner.scan_ecosystem (env.item ("SIMPLE_EIFFEL"))
 	]"
 	author: "Larry Rix"
 	date: "$Date$"
