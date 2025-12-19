@@ -36,7 +36,7 @@ exception_trace.log
 .eiffel_lsp/
 -/
 
-# Database files (local)
+# Database files (local)n*.db
 
 # Node modules (for vscode extensions)
 node_modules/
@@ -48,3 +48,5 @@ out/
 # Local data
 EIFDATA/
 output/
+
+oracle.db
