@@ -813,8 +813,8 @@ feature {NONE} -- Parsing
 		local
 			l_exists: BOOLEAN
 		do
-			across clients_found as c loop
-				if c.client_class.same_string (a_client) and c.supplier_name.same_string (a_supplier) then
+			across clients_found as ic_c loop
+				if ic_c.client_class.same_string (a_client) and ic_c.supplier_name.same_string (a_supplier) then
 					l_exists := True
 				end
 			end

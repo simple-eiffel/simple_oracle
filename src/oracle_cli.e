@@ -275,21 +275,21 @@ feature {NONE} -- Commands
 			-- Show recent compile history.
 		do
 			io.put_string ("=== COMPILE HISTORY ===%N%N")
-			across oracle.recent_compiles (20) as c loop
+			across oracle.recent_compiles (20) as ic_c loop
 				io.put_string ("[")
-				io.put_string (c.timestamp.to_string_8)
+				io.put_string (ic_c.timestamp.to_string_8)
 				io.put_string ("] ")
-				io.put_string (c.library.to_string_8)
+				io.put_string (ic_c.library.to_string_8)
 				io.put_string ("/")
-				io.put_string (c.target.to_string_8)
+				io.put_string (ic_c.target.to_string_8)
 				io.put_string (": ")
-				if c.success then
+				if ic_c.success then
 					io.put_string ("SUCCESS")
 				else
 					io.put_string ("FAILED")
 				end
 				io.put_string (" (")
-				io.put_integer (c.duration.truncated_to_integer)
+				io.put_integer (ic_c.duration.truncated_to_integer)
 				io.put_string ("s)%N")
 			end
 		end
@@ -553,36 +553,36 @@ feature {NONE} -- Commands
 			-- Show recent test run history.
 		do
 			io.put_string ("=== TEST HISTORY ===%N%N")
-			across oracle.recent_test_runs (20) as t loop
+			across oracle.recent_test_runs (20) as ic_t loop
 				io.put_string ("[")
-				io.put_string (t.timestamp.to_string_8)
+				io.put_string (ic_t.timestamp.to_string_8)
 				io.put_string ("] ")
-				io.put_string (t.library.to_string_8)
+				io.put_string (ic_t.library.to_string_8)
 				io.put_string (": ")
-				io.put_integer (t.passed)
+				io.put_integer (ic_t.passed)
 				io.put_string ("/")
-				io.put_integer (t.total)
+				io.put_integer (ic_t.total)
 				io.put_string (" passed")
-				if t.failed > 0 then
+				if ic_t.failed > 0 then
 					io.put_string (" (")
-					io.put_integer (t.failed)
+					io.put_integer (ic_t.failed)
 					io.put_string (" FAILED)")
 				end
 				io.put_string (" (")
-				io.put_integer (t.duration.truncated_to_integer)
+				io.put_integer (ic_t.duration.truncated_to_integer)
 				io.put_string ("s)%N")
 			end
 
 			-- Show failing libraries
 			if not oracle.failing_libraries.is_empty then
 				io.put_string ("%N=== LIBRARIES WITH FAILURES ===%N")
-				across oracle.failing_libraries as f loop
+				across oracle.failing_libraries as ic_f loop
 					io.put_string ("  ")
-					io.put_string (f.library.to_string_8)
+					io.put_string (ic_f.library.to_string_8)
 					io.put_string (": ")
-					io.put_integer (f.last_failed)
+					io.put_integer (ic_f.last_failed)
 					io.put_string (" failures (")
-					io.put_string (f.last_run.to_string_8)
+					io.put_string (ic_f.last_run.to_string_8)
 					io.put_string (")%N")
 				end
 			end
@@ -694,16 +694,16 @@ feature {NONE} -- Commands
 			l_stats: TUPLE [total_commits: INTEGER; libraries_with_commits: INTEGER; total_insertions: INTEGER; total_deletions: INTEGER]
 		do
 			io.put_string ("=== RECENT COMMITS ===%N%N")
-			across oracle.recent_commits (20) as c loop
+			across oracle.recent_commits (20) as ic_c loop
 				io.put_string ("[")
-				io.put_string (c.timestamp.to_string_8)
+				io.put_string (ic_c.timestamp.to_string_8)
 				io.put_string ("] ")
-				io.put_string (c.library.to_string_8)
+				io.put_string (ic_c.library.to_string_8)
 				io.put_string (" ")
-				io.put_string (c.hash.substring (1, (7).min (c.hash.count)).to_string_8)
+				io.put_string (ic_c.hash.substring (1, (7).min (ic_c.hash.count)).to_string_8)
 				io.put_string (": ")
-				io.put_string (c.message.substring (1, (50).min (c.message.count)).to_string_8)
-				if c.message.count > 50 then
+				io.put_string (ic_c.message.substring (1, (50).min (ic_c.message.count)).to_string_8)
+				if ic_c.message.count > 50 then
 					io.put_string ("...")
 				end
 				io.new_line

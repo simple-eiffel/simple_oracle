@@ -294,17 +294,17 @@ feature {NONE} -- Implementation
 						-- Update library metrics with deltas
 						a_lib_metrics.increment_class_count
 						if analyzer.total_features > l_old_features then
-							across 1 |..| (analyzer.total_features - l_old_features) as i loop
+							across 1 |..| (analyzer.total_features - l_old_features) as ic loop
 								a_lib_metrics.increment_feature_count
 							end
 						end
 						if analyzer.total_with_require > l_old_requires then
-							across 1 |..| (analyzer.total_with_require - l_old_requires) as i loop
+							across 1 |..| (analyzer.total_with_require - l_old_requires) as ic loop
 								a_lib_metrics.increment_require_count
 							end
 						end
 						if analyzer.total_with_ensure > l_old_ensures then
-							across 1 |..| (analyzer.total_with_ensure - l_old_ensures) as i loop
+							across 1 |..| (analyzer.total_with_ensure - l_old_ensures) as ic loop
 								a_lib_metrics.increment_ensure_count
 							end
 						end
