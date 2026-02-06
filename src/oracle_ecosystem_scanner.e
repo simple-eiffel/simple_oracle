@@ -560,7 +560,7 @@ feature {NONE} -- Parsing
 			-- Extract inherit clause and add to parents_found.
 			-- Parses: inherit PARENT [redefine x, y rename a as b end]
 		local
-			i, j, k: INTEGER
+			i, j: INTEGER
 			l_inherit_section: STRING_32
 			l_parent, l_rename, l_redefine: STRING_32
 			l_lines: LIST [STRING_32]
@@ -734,7 +734,7 @@ feature {NONE} -- Parsing
 			-- Extract type name from declaration text.
 			-- Handles: TYPE, detachable TYPE, GENERIC [G], etc.
 		local
-			i, j: INTEGER
+			i: INTEGER
 			l_text: STRING_32
 		do
 			create Result.make_empty

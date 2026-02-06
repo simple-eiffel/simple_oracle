@@ -238,7 +238,7 @@ feature {NONE} -- Implementation
 			across l_entries as entry loop
 				l_entry_name := entry.name.to_string_8
 				if not l_entry_name.same_string (".") and not l_entry_name.same_string ("..") then
-					l_entry_path := a_dir.name + "/" + l_entry_name
+					l_entry_path := a_dir.path.to_string_8 + "/" + l_entry_name
 					create l_file.make (l_entry_path)
 					if l_file.is_directory then
 						if not l_entry_name.starts_with (".") and not l_entry_name.same_string ("EIFGENs") then

@@ -147,15 +147,25 @@ feature -- Library Registry
 			-- All registered libraries.
 		require
 			is_ready: is_ready
+		local
+			l_n, l_p: STRING_32
 		do
 			create Result.make (50)
 			if attached disk_db as db then
 				if attached db.fetch ("SELECT name, path FROM libraries ORDER BY name") as res then
 					across res.rows as row loop
-						if attached {STRING_32} row.item (1) as n and then
-						   attached {STRING_32} row.item (2) as p then
-							Result.extend ([n, p])
+						-- SQLite returns STRING_8, convert to STRING_32
+						if attached {READABLE_STRING_GENERAL} row.item (1) as n then
+							l_n := n.to_string_32
+						else
+							create l_n.make_empty
 						end
+						if attached {READABLE_STRING_GENERAL} row.item (2) as p then
+							l_p := p.to_string_32
+						else
+							create l_p.make_empty
+						end
+						Result.extend ([l_n, l_p])
 					end
 				end
 			end
@@ -236,7 +246,7 @@ feature -- Event Logging
 
 feature -- Natural Language Query
 
-	query (a_question: READABLE_STRING_GENERAL): STRING_32
+	query (a_question: READABLE_STRING_32): STRING_32
 			-- Query the oracle with natural language.
 			-- Searches knowledge base (FTS5) and ecosystem (classes/features).
 		require
@@ -263,11 +273,12 @@ feature -- Natural Language Query
 			end
 
 			if Result.is_empty then
-				Result := "No results found for: " + a_question.to_string_32
+				Result := "No results found for: "
+			Result.append (a_question)
 			end
 		end
 
-	fts_search (a_terms: READABLE_STRING_GENERAL): STRING_32
+	fts_search (a_terms: READABLE_STRING_32): STRING_32
 			-- Full-text search across knowledge base using FTS5.
 			-- Uses MATCH operator for fast indexed search with ranking.
 		require
@@ -310,7 +321,8 @@ feature -- Natural Language Query
 				end
 			end
 			if Result.is_empty then
-				Result := "No results found for: " + a_terms.to_string_32
+				Result := "No results found for: "
+			Result.append (a_terms)
 			end
 		end
 
@@ -495,7 +507,7 @@ feature -- Knowledge Base
 								l_file.close
 
 								-- Extract title from filename
-								l_title := entry.to_string_32
+								l_title := entry
 								l_title.remove_tail (3) -- Remove .md
 
 								-- Determine category from path
@@ -2059,6 +2071,160 @@ feature {NONE} -- Implementation
 				]")
 				db.run_sql ("CREATE INDEX IF NOT EXISTS idx_compiled_stats_library ON compiled_stats(library)")
 
+
+			-- Learning System: Failure tracking with pattern extraction
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS failure_records (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					failure_type TEXT NOT NULL,
+					timestamp TEXT DEFAULT (datetime('now')),
+					library TEXT NOT NULL,
+					file_path TEXT,
+					line_number INTEGER,
+					error_code TEXT,
+					error_message TEXT NOT NULL,
+					error_context TEXT,
+					task_description TEXT,
+					code_intent TEXT,
+					pattern_regex TEXT,
+					pattern_literal TEXT,
+					pattern_description TEXT,
+					pattern_context TEXT,
+					resolved BOOLEAN DEFAULT 0,
+					resolution_approach TEXT,
+					fix_timestamp TEXT,
+					fix_worked BOOLEAN,
+					similar_to_failure_id INTEGER REFERENCES failure_records(id),
+					pattern_matched TEXT
+				)
+			]")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_type ON failure_records(failure_type)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_error_code ON failure_records(error_code)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_resolved ON failure_records(resolved)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_library ON failure_records(library)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_pattern_literal ON failure_records(pattern_literal)")
+
+			-- Learning System: Plan-outcome tracking
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS plan_outcomes (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					timestamp TEXT DEFAULT (datetime('now')),
+					plan_description TEXT NOT NULL,
+					plan_steps TEXT,
+					library TEXT,
+					confidence TEXT,
+					outcome TEXT,
+					actual_result TEXT,
+					deviations TEXT,
+					unexpected_issues TEXT,
+					lessons_learned TEXT,
+					would_do_differently TEXT,
+					compile_event_id INTEGER,
+					test_event_id INTEGER,
+					failure_ids TEXT
+				)
+			]")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_plans_outcome ON plan_outcomes(outcome)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_plans_library ON plan_outcomes(library)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_plans_timestamp ON plan_outcomes(timestamp)")
+
+			-- Learning System: Consultation history
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS consultations (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					timestamp TEXT DEFAULT (datetime('now')),
+					query_type TEXT NOT NULL,
+					query_context TEXT NOT NULL,
+					query_details TEXT,
+					oracle_response TEXT,
+					suggestions_count INTEGER,
+					followed_suggestion BOOLEAN,
+					which_suggestion INTEGER,
+					custom_approach TEXT,
+					outcome_success BOOLEAN,
+					outcome_failure_id INTEGER REFERENCES failure_records(id)
+				)
+			]")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_consultations_type ON consultations(query_type)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_consultations_followed ON consultations(followed_suggestion)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_consultations_success ON consultations(outcome_success)")
+
+			-- Learning System: Failure tracking with pattern extraction
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS failure_records (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					failure_type TEXT NOT NULL,
+					timestamp TEXT DEFAULT (datetime('now')),
+					library TEXT NOT NULL,
+					file_path TEXT,
+					line_number INTEGER,
+					error_code TEXT,
+					error_message TEXT NOT NULL,
+					error_context TEXT,
+					task_description TEXT,
+					code_intent TEXT,
+					pattern_regex TEXT,
+					pattern_literal TEXT,
+					pattern_description TEXT,
+					pattern_context TEXT,
+					resolved BOOLEAN DEFAULT 0,
+					resolution_approach TEXT,
+					fix_timestamp TEXT,
+					fix_worked BOOLEAN,
+					similar_to_failure_id INTEGER REFERENCES failure_records(id),
+					pattern_matched TEXT
+				)
+			]")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_type ON failure_records(failure_type)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_error_code ON failure_records(error_code)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_resolved ON failure_records(resolved)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_library ON failure_records(library)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_failures_pattern_literal ON failure_records(pattern_literal)")
+
+			-- Learning System: Plan-outcome tracking
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS plan_outcomes (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					timestamp TEXT DEFAULT (datetime('now')),
+					plan_description TEXT NOT NULL,
+					plan_steps TEXT,
+					library TEXT,
+					confidence TEXT,
+					outcome TEXT,
+					actual_result TEXT,
+					deviations TEXT,
+					unexpected_issues TEXT,
+					lessons_learned TEXT,
+					would_do_differently TEXT,
+					compile_event_id INTEGER,
+					test_event_id INTEGER,
+					failure_ids TEXT
+				)
+			]")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_plans_outcome ON plan_outcomes(outcome)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_plans_library ON plan_outcomes(library)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_plans_timestamp ON plan_outcomes(timestamp)")
+
+			-- Learning System: Consultation history
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS consultations (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					timestamp TEXT DEFAULT (datetime('now')),
+					query_type TEXT NOT NULL,
+					query_context TEXT NOT NULL,
+					query_details TEXT,
+					oracle_response TEXT,
+					suggestions_count INTEGER,
+					followed_suggestion BOOLEAN,
+					which_suggestion INTEGER,
+					custom_approach TEXT,
+					outcome_success BOOLEAN,
+					outcome_failure_id INTEGER REFERENCES failure_records(id)
+				)
+			]")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_consultations_type ON consultations(query_type)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_consultations_followed ON consultations(followed_suggestion)")
+			db.run_sql ("CREATE INDEX IF NOT EXISTS idx_consultations_success ON consultations(outcome_success)")
 				-- Phase 3: File timestamps for incremental scanning
 				db.run_sql ("ALTER TABLE classes ADD COLUMN file_modified INTEGER DEFAULT 0")
 				-- Note: ALTER TABLE ADD COLUMN is safe - it does nothing if column exists
@@ -2130,15 +2296,391 @@ feature {NONE} -- Implementation
 						completed_at TEXT
 					)
 				]")
+
+			-- Learning System: Failure tracking (memory copy)
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS failure_records (
+					id INTEGER PRIMARY KEY,
+					failure_type TEXT NOT NULL,
+					timestamp TEXT,
+					library TEXT NOT NULL,
+					file_path TEXT,
+					line_number INTEGER,
+					error_code TEXT,
+					error_message TEXT NOT NULL,
+					error_context TEXT,
+					task_description TEXT,
+					code_intent TEXT,
+					pattern_regex TEXT,
+					pattern_literal TEXT,
+					pattern_description TEXT,
+					pattern_context TEXT,
+					resolved BOOLEAN DEFAULT 0,
+					resolution_approach TEXT,
+					fix_timestamp TEXT,
+					fix_worked BOOLEAN,
+					similar_to_failure_id INTEGER,
+					pattern_matched TEXT
+				)
+			]")
+
+			-- Learning System: Plan-outcome tracking (memory copy)
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS plan_outcomes (
+					id INTEGER PRIMARY KEY,
+					timestamp TEXT,
+					plan_description TEXT NOT NULL,
+					plan_steps TEXT,
+					library TEXT,
+					confidence TEXT,
+					outcome TEXT,
+					actual_result TEXT,
+					deviations TEXT,
+					unexpected_issues TEXT,
+					lessons_learned TEXT,
+					would_do_differently TEXT,
+					compile_event_id INTEGER,
+					test_event_id INTEGER,
+					failure_ids TEXT
+				)
+			]")
+
+			-- Learning System: Consultation history (memory copy)
+			db.run_sql ("[
+				CREATE TABLE IF NOT EXISTS consultations (
+					id INTEGER PRIMARY KEY,
+					timestamp TEXT,
+					query_type TEXT NOT NULL,
+					query_context TEXT NOT NULL,
+					query_details TEXT,
+					oracle_response TEXT,
+					suggestions_count INTEGER,
+					followed_suggestion BOOLEAN,
+					which_suggestion INTEGER,
+					custom_approach TEXT,
+					outcome_success BOOLEAN,
+					outcome_failure_id INTEGER
+				)
+			]")
+
 			end
 		end
 
-	sync_table_to_memory (a_table: STRING)
-			-- Copy table data from disk to memory.
-			-- Fails silently if table is empty or query fails.
+	
+	feature -- Failure Tracking (Learning System)
+
+	record_compile_failure (
+		a_library: READABLE_STRING_GENERAL;
+		a_file: detachable READABLE_STRING_GENERAL;
+		a_line: INTEGER;
+		a_error_code: READABLE_STRING_GENERAL;
+		a_error_message: READABLE_STRING_GENERAL;
+		a_error_context: READABLE_STRING_GENERAL;
+		a_task_description: detachable READABLE_STRING_GENERAL
+	)
+		-- Record a compile failure (pattern extraction removed).
+		require
+			is_ready: is_ready
+			library_not_empty: not a_library.is_empty
+			error_code_not_empty: not a_error_code.is_empty
+			error_message_not_empty: not a_error_message.is_empty
+		local
+			l_file_str, l_code_intent, l_regex, l_literal, l_desc, l_ctx: STRING_32
 		do
-			if attached memory_db as mem and attached disk_db as disk then
-				-- Clear memory table (ignore errors)
+			clear_error
+			if attached disk_db as db then
+				if attached a_file as f then
+					l_file_str := f.to_string_32
+				else
+					create l_file_str.make_empty
+				end
+				create l_code_intent.make_empty
+				-- Pattern extraction removed (FAILURE_PATTERN_EXTRACTOR moved to _deprecated)
+				create l_regex.make_empty
+				create l_literal.make_empty
+				create l_desc.make_empty
+				create l_ctx.make_empty
+				db.run_sql_with (
+					"INSERT INTO failure_records (failure_type, library, file_path, line_number, error_code, error_message, error_context, task_description, code_intent, pattern_regex, pattern_literal, pattern_description, pattern_context) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+					<<
+						"compile_error",
+						a_library.to_string_32,
+						l_file_str,
+						a_line.out.to_string_32,
+						a_error_code.to_string_32,
+						a_error_message.to_string_32,
+						a_error_context.to_string_32,
+						(if attached a_task_description then a_task_description.to_string_32 else "" end),
+						l_code_intent,
+						l_regex,
+						l_literal,
+						l_desc,
+						l_ctx
+					>>
+				)
+				if db.has_error then
+					set_error (db.last_error_message)
+				else
+					log_event ("compile_failure", a_library, a_error_code.to_string_32 + ": " + a_error_message.to_string_32)
+				end
+			end
+		end
+
+	find_similar_failures (a_error_code: READABLE_STRING_GENERAL; a_library: detachable READABLE_STRING_GENERAL; a_limit: INTEGER): ARRAYED_LIST [TUPLE [id: INTEGER; code: STRING_32; message: STRING_32; library: STRING_32; fixed: BOOLEAN]]
+		-- Find similar past failures by error code.
+		require
+			is_ready: is_ready
+			error_code_not_empty: not a_error_code.is_empty
+			limit_positive: a_limit > 0
+		local
+			l_results: ARRAYED_LIST [TUPLE [id: INTEGER; code: STRING_32; message: STRING_32; library: STRING_32; fixed: BOOLEAN]]
+			l_query: STRING_32
+		do
+			create l_results.make (a_limit)
+			if attached disk_db as db then
+				create l_query.make (200)
+				l_query.append ("SELECT id, error_code, error_message, library, resolved FROM failure_records WHERE error_code = ? ")
+				if attached a_library as lib and then not lib.is_empty then
+					l_query.append ("AND library = ? ")
+				end
+				l_query.append ("ORDER BY timestamp DESC LIMIT ")
+				l_query.append (a_limit.out)
+			if attached a_library as lib and then not lib.is_empty then
+				if attached db.fetch_with (l_query, <<a_error_code.to_string_32, lib.to_string_32>>) as res then
+					extract_failure_results (res, l_results)
+				end
+			else
+				if attached db.fetch (l_query) as res then
+					extract_failure_results (res, l_results)
+				end
+			end
+		end
+
+
+
+		Result := l_results
+	end
+
+
+
+	get_failure_patterns (a_library: READABLE_STRING_GENERAL): detachable ARRAYED_LIST [TUPLE [id: INTEGER; literal: STRING_32; description: STRING_32; error_code: STRING_32]]
+		-- Get all failure patterns for a library (or all if empty).
+		require
+			is_ready: is_ready
+		local
+			l_patterns: ARRAYED_LIST [TUPLE [id: INTEGER; literal: STRING_32; description: STRING_32; error_code: STRING_32]]
+		do
+			create l_patterns.make (50)
+
+			if attached disk_db as db then
+				if a_library.is_empty then
+					-- Get all patterns
+					if attached db.fetch ("SELECT id, pattern_literal, pattern_description, error_code FROM failure_records WHERE pattern_literal IS NOT NULL OR pattern_regex IS NOT NULL ORDER BY id DESC") as res then
+						across res.rows as row loop
+							if attached {INTEGER_64} row.item (1) as id and
+							   attached {READABLE_STRING_GENERAL} row.item (2) as lit and
+							   attached {READABLE_STRING_GENERAL} row.item (3) as desc and
+							   attached {READABLE_STRING_GENERAL} row.item (4) as err
+							then
+								l_patterns.extend ([
+									id.to_integer_32,
+									lit.to_string_32,
+									desc.to_string_32,
+									err.to_string_32
+								])
+							end
+						end
+					end
+				else
+					-- Get patterns for specific library
+					if attached db.fetch_with (
+						"SELECT id, pattern_literal, pattern_description, error_code FROM failure_records WHERE library = ? AND (pattern_literal IS NOT NULL OR pattern_regex IS NOT NULL) ORDER BY id DESC",
+						<<a_library.to_string_32>>
+					) as res then
+						across res.rows as row loop
+							if attached {INTEGER_64} row.item (1) as id and
+							   attached {READABLE_STRING_GENERAL} row.item (2) as lit and
+							   attached {READABLE_STRING_GENERAL} row.item (3) as desc and
+							   attached {READABLE_STRING_GENERAL} row.item (4) as err
+							then
+								l_patterns.extend ([
+									id.to_integer_32,
+									lit.to_string_32,
+									desc.to_string_32,
+									err.to_string_32
+								])
+							end
+						end
+					end
+				end
+			end
+
+			Result := l_patterns
+		end
+
+
+	check_code_pattern (a_code: READABLE_STRING_GENERAL; a_library: READABLE_STRING_GENERAL): ARRAYED_LIST [TUPLE [pattern_id: INTEGER; pattern_literal: STRING_32; description: STRING_32; severity: STRING_32]]
+		-- **ORACLE GATE** - Check if code matches known failure patterns (literal and regex).
+		require
+			is_ready: is_ready
+			code_not_empty: not a_code.is_empty
+			library_not_empty: not a_library.is_empty
+		local
+			l_flagged: ARRAYED_LIST [TUPLE [pattern_id: INTEGER; pattern_literal: STRING_32; description: STRING_32; severity: STRING_32]]
+			l_code_str: STRING_32
+		do
+			create l_flagged.make (20)
+			l_code_str := a_code.to_string_32
+			if attached disk_db as db then
+				-- Check LITERAL patterns first
+				if attached db.fetch_with (
+					"SELECT id, pattern_literal, pattern_description, error_code FROM failure_records WHERE library = ? AND resolved = 0 AND pattern_literal IS NOT NULL",
+					<<a_library.to_string_32>>
+				) as res then
+					across res.rows as row loop
+						if attached {INTEGER_64} row.item (1) as pattern_id and
+						   attached {READABLE_STRING_GENERAL} row.item (2) as literal and
+						   attached {READABLE_STRING_GENERAL} row.item (3) as desc and
+						   attached {READABLE_STRING_GENERAL} row.item (4) as err_code
+						then
+							if l_code_str.has_substring (literal.to_string_32) then
+								l_flagged.extend ([
+									pattern_id.to_integer_32,
+									literal.to_string_32,
+									desc.to_string_32,
+									err_code.to_string_32
+								])
+							end
+						end
+					end
+				end
+
+				-- Check REGEX patterns second
+				if attached db.fetch_with (
+					"SELECT id, pattern_regex, pattern_description, error_code FROM failure_records WHERE library = ? AND resolved = 0 AND pattern_regex IS NOT NULL",
+					<<a_library.to_string_32>>
+				) as res then
+					across res.rows as row loop
+						if attached {INTEGER_64} row.item (1) as pattern_id and
+						   attached {READABLE_STRING_GENERAL} row.item (2) as regex_pat and
+						   attached {READABLE_STRING_GENERAL} row.item (3) as desc and
+						   attached {READABLE_STRING_GENERAL} row.item (4) as err_code
+						then
+							-- For MVP: check for keyword patterns (simple substring matching)
+							-- Real implementation would use simple_regex library
+							if check_regex_pattern (l_code_str, regex_pat.to_string_32) then
+								l_flagged.extend ([
+									pattern_id.to_integer_32,
+									regex_pat.to_string_32,
+									desc.to_string_32,
+									err_code.to_string_32
+								])
+							end
+						end
+					end
+				end
+			end
+			Result := l_flagged
+		end
+
+	check_regex_pattern (a_code: STRING_32; a_pattern: STRING_32): BOOLEAN
+		-- Check if code matches regex pattern (MVP: simplified matching)
+		-- For now, looks for key patterns rather than full regex
+		do
+			Result := False
+
+			-- Pattern: create\s+\{[^}]+\}\s*(?!\.)
+			if a_pattern.has_substring ("create") and a_pattern.has_substring ("{") then
+				if a_code.has_substring ("create {") and
+				   not (a_code.has_substring ("create {") and a_code.has_substring ("."))
+				then
+					Result := True
+				end
+			end
+
+			-- Pattern: create\s+[A-Za-z_]\w*\s*(?!\.)
+			if not Result and a_pattern.has_substring ("create") then
+				if a_code.has_substring ("create ") then
+					-- Check for create without dot (bare create)
+					Result := True
+				end
+			end
+
+			-- Pattern: detachable without void check
+			if not Result and a_pattern.has_substring ("detachable") then
+				if a_code.has_substring ("detachable ") then
+					Result := True
+				end
+			end
+
+			-- Pattern: old in require clause
+			if not Result and a_pattern.has_substring ("require") and
+			   a_pattern.has_substring ("old")
+			then
+				if a_code.has_substring ("require") and a_code.has_substring ("old") then
+					Result := True
+				end
+			end
+
+			-- Generic without parameters
+			if not Result and (a_pattern.has_substring ("ARRAY") or
+			                   a_pattern.has_substring ("LIST") or
+			                   a_pattern.has_substring ("HASH_TABLE"))
+			then
+				if (a_code.has_substring (": ARRAY") or
+				    a_code.has_substring (": LIST") or
+				    a_code.has_substring (": HASH_TABLE"))
+				   and not a_code.has_substring ("[")
+				then
+					Result := True
+				end
+			end
+		end
+
+	extract_failure_results (a_result: detachable SIMPLE_SQL_RESULT; a_list: ARRAYED_LIST [TUPLE [id: INTEGER; code: STRING_32; message: STRING_32; library: STRING_32; fixed: BOOLEAN]])
+		-- Helper: Extract results from failure query.
+		local
+			l_id: INTEGER
+			l_code, l_msg, l_lib: STRING_32
+			l_fixed: BOOLEAN
+		do
+			if attached a_result then
+				across a_result.rows as row loop
+					l_id := 0
+					create l_code.make_empty
+					create l_msg.make_empty
+					create l_lib.make_empty
+					l_fixed := False
+					if attached {INTEGER_64} row.item (1) as id then
+						l_id := id.to_integer_32
+					end
+					if attached {READABLE_STRING_GENERAL} row.item (2) as code then
+						l_code := code.to_string_32
+					end
+					if attached {READABLE_STRING_GENERAL} row.item (3) as msg then
+						l_msg := msg.to_string_32
+					end
+					if attached {READABLE_STRING_GENERAL} row.item (4) as lib then
+						l_lib := lib.to_string_32
+					end
+					if attached {INTEGER_64} row.item (5) as fixed_val then
+						l_fixed := fixed_val > 0
+					end
+					a_list.extend ([l_id, l_code, l_msg, l_lib, l_fixed])
+				end
+			end
+		end
+
+
+sync_table_to_memory (a_table: STRING)
+			-- Copy table data from disk to memory.
+			-- In memory-only mode, this is a no-op (both databases are the same).
+		do
+			if is_memory_only then
+				-- No-op: in memory-only mode, memory_db and disk_db are the same object
+				-- Don't delete from the shared database!
+			elseif attached memory_db as mem and attached disk_db as disk then
+				-- Only delete when we have separate memory and disk databases
 				mem.execute ("DELETE FROM " + a_table)
 				-- Note: For MVP, we write to disk and query from memory
 				-- Real sync would copy rows, but tables are small enough

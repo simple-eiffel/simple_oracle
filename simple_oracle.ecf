@@ -6,6 +6,7 @@
 		<file_rule>
 			<exclude>/EIFGENs$</exclude>
 			<exclude>/\..*$</exclude>
+		<exclude>/_deprecated$</exclude>
 		</file_rule>
 		<option warning="warning">
 			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
@@ -17,16 +18,16 @@
 			<void_safety support="all"/>
 		</capability>
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="simple_datetime" location="$SIMPLE_EIFFEL/simple_datetime/simple_datetime.ecf"/>
-		<library name="simple_file" location="$SIMPLE_EIFFEL/simple_file/simple_file.ecf"/>
-		<library name="simple_json" location="$SIMPLE_EIFFEL/simple_json/simple_json.ecf"/>
-		<library name="simple_logger" location="$SIMPLE_EIFFEL/simple_logger/simple_logger.ecf"/>
-		<library name="simple_process" location="$SIMPLE_EIFFEL/simple_process/simple_process.ecf"/>
-		<library name="simple_sql" location="$SIMPLE_EIFFEL/simple_sql/simple_sql.ecf"/>
-		<library name="simple_watcher" location="$SIMPLE_EIFFEL/simple_watcher/simple_watcher.ecf"/>
-		<library name="simple_toml" location="$SIMPLE_EIFFEL/simple_toml/simple_toml.ecf"/>
-		<library name="simple_ucf" location="$SIMPLE_EIFFEL/simple_ucf/simple_ucf.ecf"/>
-		<library name="simple_eiffel_parser" location="$SIMPLE_EIFFEL/simple_eiffel_parser/simple_eiffel_parser.ecf"/>
+		<library name="simple_datetime" location="$SIMPLE_EIFFEL\simple_datetime\simple_datetime.ecf"/>
+		<library name="simple_eiffel_parser" location="$SIMPLE_EIFFEL\simple_eiffel_parser\simple_eiffel_parser.ecf"/>
+		<library name="simple_file" location="$SIMPLE_EIFFEL\simple_file\simple_file.ecf"/>
+		<library name="simple_json" location="$SIMPLE_EIFFEL\simple_json\simple_json.ecf"/>
+		<library name="simple_logger" location="$SIMPLE_EIFFEL\simple_logger\simple_logger.ecf"/>
+		<library name="simple_process" location="$SIMPLE_EIFFEL\simple_process\simple_process.ecf"/>
+		<library name="simple_sql" location="$SIMPLE_EIFFEL\simple_sql\simple_sql.ecf"/>
+		<library name="simple_toml" location="$SIMPLE_EIFFEL\simple_toml\simple_toml.ecf"/>
+		<library name="simple_ucf" location="$SIMPLE_EIFFEL\simple_ucf\simple_ucf.ecf"/>
+		<library name="simple_watcher" location="$SIMPLE_EIFFEL\simple_watcher\simple_watcher.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>
 	<target name="simple_oracle_tests" extends="simple_oracle">
@@ -35,7 +36,7 @@
 			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
 		</option>
 		<setting name="console_application" value="true"/>
-		<library name="simple_testing" location="$SIMPLE_EIFFEL/simple_testing/simple_testing.ecf"/>
+		<library name="simple_testing" location="$SIMPLE_EIFFEL\simple_testing\simple_testing.ecf"/>
 		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
 		<cluster name="tests" location=".\testing\" recursive="true"/>
 	</target>
@@ -46,5 +47,10 @@
 	<target name="simple_oracle_daemon" extends="simple_oracle">
 		<root class="ORACLE_DAEMON" feature="make"/>
 		<setting name="console_application" value="true"/>
+	</target>
+	<target name="simple_oracle_app" extends="simple_oracle">
+		<description>Hand-coded APP</description>
+		<version major="0" minor="0" release="0" build="1" product="Oracle App"/>
+		<setting name="executable_name" value="oracle_app"/>
 	</target>
 </system>

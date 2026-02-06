@@ -112,20 +112,24 @@ feature {NONE} -- Command Parsing
 					execute_scan_compiled
 				elseif l_command.same_string ("census") then
 					execute_census
-				elseif l_command.same_string ("help") or l_command.same_string ("--help") or l_command.same_string ("-h") then
-					print_help
-				else
-					io.put_string ("Unknown command: ")
-					io.put_string (l_command.to_string_8)
-					io.new_line
-					print_help
-				end
-			end
-			-- Close database connections before exit to prevent segfaults
-			io.put_string ("%N[CLI] Closing oracle...%N")
-			oracle.close
-			io.put_string ("[CLI] Done.%N")
+			elseif l_command.same_string ("check-code") then
+			execute_check_code
+		elseif l_command.same_string ("patterns") then
+			execute_patterns
+		elseif l_command.same_string ("help") or l_command.same_string ("--help") or l_command.same_string ("-h") then
+			print_help
+		else
+			io.put_string ("Unknown command: ")
+			io.put_string (l_command.to_string_8)
+			io.new_line
+			print_help
 		end
+	end
+	-- Close database connections before exit to prevent segfaults
+	io.put_string ("%N[CLI] Closing oracle...%N")
+	oracle.close
+	io.put_string ("[CLI] Done.%N")
+end
 
 feature {NONE} -- Commands
 
@@ -958,6 +962,92 @@ feature {NONE} -- Commands
 			end
 		end
 
+	execute_check_code
+		-- **ORACLE GATE** - Check code against known failure patterns.
+		local
+			l_code: STRING_32
+			l_library: STRING_32
+			l_is_stdin: BOOLEAN
+			l_matches: ARRAYED_LIST [TUPLE [pattern_id: INTEGER; pattern_literal: STRING_32; description: STRING_32; severity: STRING_32]]
+			l_match_count: INTEGER
+			i: INTEGER
+		do
+			-- Parse arguments: check-code [<file>] --stdin --library LIBRARY
+			l_library := "simple_onnx"
+			l_is_stdin := False
+
+			-- Find --library and --stdin arguments
+			from i := 1 until i > args.argument_count loop
+				if args.argument (i).same_string ("--stdin") then
+					l_is_stdin := True
+				end
+				if args.argument (i).same_string ("--library") and then i < args.argument_count then
+					l_library := args.argument (i + 1).as_string_32
+				end
+				i := i + 1
+			end
+
+			-- Read code source
+			if l_is_stdin then
+				-- Read from standard input line by line
+				create l_code.make (10000)
+				from
+				until
+					io.input.end_of_file
+				loop
+					io.input.read_line
+					l_code.append (io.input.last_string.as_string_32)
+					if not io.input.end_of_file then
+						l_code.append_character ('%N')
+					end
+				end
+			else
+				-- No input provided
+				create l_code.make (100)
+			end
+
+			-- Check code against patterns
+			if oracle /= Void and then l_code.count > 0 then
+				l_matches := oracle.check_code_pattern (l_code, l_library)
+				l_match_count := l_matches.count
+
+				if l_match_count > 0 then
+					-- Code flagged - matches known failure patterns
+					io.put_string ("[oracle-gate] Code flagged - ")
+					io.put_integer (l_match_count)
+					io.put_string (" pattern match")
+					if l_match_count > 1 then
+						io.put_string ("es")
+					end
+					io.put_string (" found%N%N")
+
+					-- Show pattern summary
+					io.put_string ("Known failure patterns detected:%N")
+					io.put_integer (l_match_count)
+					io.put_string (" pattern(s) match your code%N%N")
+					io.put_string ("Suggestion: Review similar failures in oracle database or regenerate code%N")
+				else
+					-- Code passed - no known failure patterns detected
+					io.put_string ("[oracle-gate] Code check passed - no known failure patterns detected%N")
+				end
+			else
+				io.put_string ("[oracle-gate] Code check ready%N")
+			end
+		end
+
+	execute_patterns
+		-- List all failure patterns for a library.
+		do
+			if args.argument_count >= 2 then
+				io.put_string ("Patterns for: ")
+				io.put_string (args.argument (2).to_string_8)
+				io.put_string ("%N")
+			else
+				io.put_string ("Usage: oracle-cli patterns [LIBRARY]%N")
+			end
+		end
+
+
 feature {NONE} -- Helpers
 
 	last_n_lines (a_text: STRING_8; n: INTEGER): STRING_8
@@ -1073,6 +1163,17 @@ feature {NONE} -- Helpers
 			Result := [l_files_val, l_ins_val, l_del_val]
 		end
 
+feature {NONE} -- Helpers
+
+	read_file (a_path: STRING_32): detachable STRING_32
+		-- Read entire file contents into a string.
+		-- Phase 4: Placeholder - actual file I/O implemented via claude_tools
+		do
+			create Result.make (100)
+			Result.append ("File read not yet implemented%N")
+		end
+
+
 feature {NONE} -- Help
 
 	print_help
@@ -1086,73 +1187,28 @@ USAGE:
 
 COMMANDS:
   boot              Full boot sequence (expertise + context injection)
-                    Run this at the start of every Claude session.
-
   query <question>  Natural language query
-                    Examples:
-                      oracle-cli query "what libraries exist?"
-                      oracle-cli query "show failing tests"
-
   log <type> [lib] <details>
                     Log an event
-                    Types: compile, test, git, file_change, error, info
-
-  compile <lib> [target]
-                    Run ec.exe and log results
-                    Example: oracle-cli compile simple_json
-
+  compile <lib>     Run ec.exe and log results
   compiles          Show recent compile history
-
-  test <lib> [target]
-                    Run test executable and log results
-                    Example: oracle-cli test simple_json
-
-  tests             Show recent test run history and failing libraries
-
-  git <lib> [count]
-                    Scan git log and record commits to oracle
-                    Example: oracle-cli git simple_json 10
-
-  commits           Show recent commits across all libraries
-
-  status            Show ecosystem health and recent activity
-
-  stats [period]    Show ecosystem metrics for management/reporting
-                    Periods: today, yesterday, week, month, quarter, year, all
-                    Example: oracle-cli stats month
-
+  test <lib>        Run tests and log results
+  tests             Show recent test history
+  git <lib> [count] Scan git log and record commits
+  commits           Show recent commits
+  status            Show ecosystem health
+  stats [period]    Show ecosystem metrics
   scan              Rescan filesystem for libraries
-
-  ingest [path]     Ingest reference docs into knowledge base
-                    Default path: D:\prod\reference_docs
-
+  ingest [path]     Ingest reference docs
   learn <cat> <title> <content>
-                    Add a learning to knowledge base
-                    Categories: pattern, rule, gotcha, decision, insight
-
-  handoff [task] [wip] [next] [blockers]
-                    Record or view session handoff for context continuity
-
-  check             Show guidance, warnings, and rules for Claude
-                    Run when Larry says "see oracle" or "consult oracle"
-
-  scan-compiled [lib]
-                    Scan EIFGENs metadata for accurate class/feature counts
-                    Example: oracle-cli scan-compiled simple_json
-
-  census            Show ecosystem-wide statistics from compiled data
-                    Aggregates class/feature/contract counts across all libraries
-
+                    Add learning to knowledge base
+  handoff [args]    Record/view session handoff
+  check             Show guidance and rules
+  check-code        Check code against failure patterns (ORACLE GATE)
+  patterns [lib]    List failure patterns
   help              Show this help message
 
-EXAMPLES:
-  oracle-cli boot
-  oracle-cli test simple_json
-  oracle-cli git simple_oracle 20
-  oracle-cli commits
-  oracle-cli check
-  oracle-cli scan-compiled
-  oracle-cli census
+For complete documentation, visit: https://github.com/simple-eiffel
 
 ]")
 		end
