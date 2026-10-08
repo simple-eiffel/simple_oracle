@@ -265,8 +265,9 @@ feature {NONE} -- Commands
 					io.put_string ("=== COMPILE SUCCESS ===%N")
 				else
 					io.put_string ("=== COMPILE FAILED ===%N")
-					if attached l_process.stdout as l_out then
-						io.put_string (last_n_lines (l_out.to_string_8, 30))
+					if attached l_process.last_output_bytes as l_out then
+							-- Raw bytes, as before simple_process 1.1.0 decoded `last_output'.
+						io.put_string (last_n_lines (l_out.twin, 30))
 					end
 				end
 				io.put_string ("Duration: ")
@@ -509,8 +510,9 @@ feature {NONE} -- Commands
 				l_duration := ((create {SIMPLE_DATE_TIME}.make_now).to_timestamp.to_integer - l_start).to_double
 
 				-- Parse output for test results
-				if attached l_process.stdout as l_out then
-					l_output := l_out.to_string_8
+				if attached l_process.last_output_bytes as l_out then
+						-- Raw bytes, as before simple_process 1.1.0 decoded `last_output'.
+					l_output := l_out.twin
 					if attached parse_test_output (l_output) as l_results then
 						l_total := l_results.total
 						l_passed := l_results.passed
@@ -646,8 +648,9 @@ feature {NONE} -- Commands
 				create l_author.make_empty
 				create l_message.make_empty
 
-				if attached l_process.stdout as l_git_out then
-					l_output := l_git_out.to_string_8
+				if attached l_process.last_output_bytes as l_git_out then
+						-- Raw bytes, as before simple_process 1.1.0 decoded `last_output'.
+					l_output := l_git_out.twin
 					l_lines := l_output.split ('%N')
 					from l_lines.start until l_lines.after loop
 						if not l_lines.item.is_empty then
